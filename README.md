@@ -27,10 +27,10 @@ For the nightly release (the pasted fragment URL also works):
 
 ```sh
 node src/cli.js dispatch --host YOUR-OWNER/ente-desktop-validator \
-  --release 'https://github.com/ente/nightly/releases#release-photos-desktop-v1.7.29-beta' --watch
+  --release 'https://github.com/ente/nightly/releases#release-photos-desktop-v1.7.29-beta' --baseline v1.7.28 --watch
 ```
 
-The default upgrade is v1.7.28 → 1.7.29-beta. Preparation records the actual source commit and successful publication evidence. A partially published nightly, moving source tag, changed asset, unavailable build log, or unknown source contract cannot pass. No scheduled workflow is added.
+Future nightly upgrades default to the **2026-09-08 nightly snapshot** (`1.7.29-beta`, source `2ffa837d`). All 12 original installers are preserved in the private standalone repository, so an upstream tag replacement cannot change the baseline. The exact same build cannot be used as both candidate and baseline; choose a newer nightly or explicitly pass `--baseline v1.7.28` when retesting today’s build. Preparation records the candidate source commit and successful publication evidence. Archived baselines preserve their original commit and validate the stored asset IDs, sizes and hashes. A partially published nightly, moving source tag, changed asset, unavailable build log, or unknown source contract cannot pass. No scheduled workflow is added.
 
 For a targeted remote rerun, add `--scenario linux-x64-deb-fresh,linux-x64-deb-upgrade`. The manual workflow exposes the same `scenarios` input. Omitted scenarios remain missing in the channel-specific aggregate, so a targeted run cannot grant full release coverage.
 
@@ -48,7 +48,7 @@ The result is explicitly marked `static-inspection`, with `runtimeTested: false`
 ## Standalone GitHub setup
 
 1. Push this repository to your own GitHub repository and enable Actions. Keep it separate from `ente/ente` and `ente/photos-desktop`.
-2. Use **Validate Ente desktop release → Run workflow**, or the CLI command above. `release` accepts a tag or an Ente release URL. An empty `baseline` selects the numerically preceding stable version, including for nightlies. An explicit baseline accepts either repository’s release URL.
+2. Use **Validate Ente desktop release → Run workflow**, or the CLI command above. `release` accepts a tag or an Ente release URL. An empty `baseline` selects the archived 2026-09-08 snapshot for nightly candidates and the preceding stable version for stable candidates. An explicit baseline accepts either repository’s release URL.
 3. Public release assets require no additional secret. To read drafts, set **`ENTE_RELEASE_READ_TOKEN`** to a credential with read access to `ente/photos-desktop`.
 4. For Fedora and Arch coverage, provision disposable runners as described in [docs/runners.md](docs/runners.md). Set **`RUNNER_DISCOVERY_TOKEN`** with permission to list runners in the standalone repository. This token is used only by the preparation job.
 
@@ -141,3 +141,5 @@ The validator does not claim exhaustive OS-version, GPU, account-migration, or u
 Read-only inspection of the downloaded v1.7.28 macOS ZIP can validate its installed-file contract without claiming an actual install or ML run. See [docs/verification.md](docs/verification.md) for the evidence collected during implementation.
 
 Plans and reports use schema **v2** with repository, channel, application version, source/profile identity and expected scenario count. Regenerate saved v1 plans; historical v1 reports remain readable as files but cannot be mixed into a v2 run.
+
+The archived baseline is [baseline-photos-desktop-2026-09-08](https://github.com/AswinAsok/ente-desktop-validator/releases/tag/baseline-photos-desktop-2026-09-08), pinned by `baselines/nightly.json`. `BASELINE_READ_TOKEN` may be set for archive access; standalone Actions uses its own repository token independently of the Ente release-read credential. Same-version nightly rebuilds force DEB/RPM reinstallation so package managers cannot silently keep the baseline. Snapshot availability does not assert that the baseline is healthy.

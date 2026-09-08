@@ -128,7 +128,7 @@ test("API reads and downloads use the candidate repository, stable baseline rema
     return Response.json(release());
   });
   assert.equal((await getRelease(tag)).repository, "ente/nightly");
-  assert.equal((await baselineRelease(tag)).tag, "v1.7.28");
+  assert.equal((await baselineRelease("v1.7.29")).tag, "v1.7.28");
   await assert.rejects(
     downloadAsset(release().assets[0], await temporary(t), release()),
     /HTTP 403/,

@@ -1,6 +1,11 @@
 import fs from "node:fs/promises";
 import { createHash } from "node:crypto";
-import { api, getRelease, assertUnchanged } from "./github.js";
+import {
+  api,
+  getRelease,
+  assertUnchanged,
+  assertArchiveUnchanged,
+} from "./github.js";
 import { releaseDescriptor } from "./matrix.js";
 import { json, blocked, unsupported } from "./common.js";
 
@@ -197,6 +202,8 @@ export function profileIdentity(profile) {
   };
 }
 export async function recheckRelease(before) {
+  // Archived baselines retain their original source commit after upstream tags move.
+  if (before.archive) return assertArchiveUnchanged(before);
   const after = await getRelease(before);
   if (before.source) {
     const commit = await sourceCommit(before.source.tag);

@@ -89,7 +89,7 @@ export function markdown(report) {
     report.kind === "aggregate"
       ? report.scenarios.map((r) => [r.id, r.status, r.error ?? ""])
       : report.checks.map((c) => [c.id, c.status, c.error ?? ""]);
-  return `# Ente desktop validation: ${cell(report.status)}\n\nRelease: ${cell(report.release?.repository)} ${cell(report.release?.tag)}\n\n${cause ? `First issue: ${cell(cause.id)} — ${cell(cause.error)}\n\n` : ""}${report.kind === "aggregate" ? "Full coverage requires every planned scenario to pass." : report.kind === "preparation" ? "Preparation stopped before native validation began." : "A single scenario is not a full release approval."}\n\n| Check | Result | Detail |\n|---|---|---|\n${rows.map((row) => `| ${row.map(cell).join(" | ")} |`).join("\n")}\n`;
+  return `# Ente desktop validation: ${cell(report.status)}\n\nRelease: ${cell(report.release?.repository)} ${cell(report.release?.tag)}\n\n${report.baseline ? `Baseline: ${cell(report.baseline.repository)} ${cell(report.baseline.tag)}${report.baseline.archive ? ` (archive: ${cell(report.baseline.archive.tag)})` : ""}\n\n` : ""}${cause ? `First issue: ${cell(cause.id)} — ${cell(cause.error)}\n\n` : ""}${report.kind === "aggregate" ? "Full coverage requires every planned scenario to pass." : report.kind === "preparation" ? "Preparation stopped before native validation began." : "A single scenario is not a full release approval."}\n\n| Check | Result | Detail |\n|---|---|---|\n${rows.map((row) => `| ${row.map(cell).join(" | ")} |`).join("\n")}\n`;
 }
 export async function saveReport(report, directory) {
   if (report.kind === "scenario") {

@@ -1,0 +1,212 @@
+{
+  "schemaVersion": 1,
+  "id": 380930701,
+  "repository": "ente/nightly",
+  "tag": "photos-desktop-v1.7.29-beta",
+  "tag_name": "photos-desktop-v1.7.29-beta",
+  "version": "1.7.29-beta",
+  "channel": "nightly",
+  "source": {
+    "repository": "ente/ente",
+    "tag": "photos-desktop-v1.7.29-beta",
+    "commit": "2ffa837dab0540fd46c8863714ef944498e3b1d5",
+    "publication": {
+      "runId": 34202315229,
+      "attempt": 1,
+      "url": "https://github.com/ente/ente/actions/runs/34202315229",
+      "startedAt": "2026-09-08T08:01:50Z",
+      "completedAt": "2026-09-08T08:29:18Z",
+      "finishJobId": 101991469565,
+      "finishLogSha256": "bbc9c74ba33d85d81255725f3eff102042e2c6a30e85488b9ff3e0c57edac930"
+    }
+  },
+  "assets": [
+    {
+      "id": 550142480,
+      "name": "ente-1.7.29-beta-aarch64.pacman",
+      "size": 129583368,
+      "digest": "sha256:0194f4dfbab793e24ed6babdf207f5a2602e99acd805e5f61abf426e389b8847",
+      "created_at": "2026-09-08T08:28:32Z",
+      "updated_at": "2026-09-08T08:28:35Z"
+    },
+    {
+      "id": 550142296,
+      "name": "ente-1.7.29-beta-aarch64.rpm",
+      "size": 126699869,
+      "digest": "sha256:771196248662a1891cade5f0a9c67609a9b6807fa64718be0b416305c7470aa7",
+      "created_at": "2026-09-08T08:28:27Z",
+      "updated_at": "2026-09-08T08:28:31Z"
+    },
+    {
+      "id": 550142076,
+      "name": "ente-1.7.29-beta-amd64.deb",
+      "size": 152011936,
+      "digest": "sha256:449d9451533672b8b3f4ba7f327f544e6cc1296b31b7c4ec8dff2833c4af2713",
+      "created_at": "2026-09-08T08:28:22Z",
+      "updated_at": "2026-09-08T08:28:27Z"
+    },
+    {
+      "id": 550141792,
+      "name": "ente-1.7.29-beta-arm64.AppImage",
+      "size": 193031575,
+      "digest": "sha256:df33c8c039f8210a8aba311cb10906592510cef03264481b5c7fc947d65ced27",
+      "created_at": "2026-09-08T08:28:16Z",
+      "updated_at": "2026-09-08T08:28:22Z"
+    },
+    {
+      "id": 550141589,
+      "name": "ente-1.7.29-beta-arm64.deb",
+      "size": 143667424,
+      "digest": "sha256:de940b3bbc48f03c57c7b3c95e7f9fed6564177cf6b0714f40bd81a14f0403c7",
+      "created_at": "2026-09-08T08:28:12Z",
+      "updated_at": "2026-09-08T08:28:16Z"
+    },
+    {
+      "id": 550133727,
+      "name": "ente-1.7.29-beta-arm64.exe",
+      "size": 156650208,
+      "digest": "sha256:b863a372b0c70e3e00490a4cf8e854e5e6c49040f01664fa79d28c60511a0932",
+      "created_at": "2026-09-08T08:22:41Z",
+      "updated_at": "2026-09-08T08:22:45Z"
+    },
+    {
+      "id": 550130952,
+      "name": "ente-1.7.29-beta-universal.dmg",
+      "size": 300826438,
+      "digest": "sha256:69417f2fa713398cbaf648b6f19313ccacda29fffc5c45e9931af485ea0f68ea",
+      "created_at": "2026-09-08T08:20:46Z",
+      "updated_at": "2026-09-08T08:20:57Z"
+    },
+    {
+      "id": 550133579,
+      "name": "ente-1.7.29-beta-x64.exe",
+      "size": 164290928,
+      "digest": "sha256:1ba4643b680c2694cb2518d7a46f1dfe0a09b6064128a036cd426f8add17c189",
+      "created_at": "2026-09-08T08:22:35Z",
+      "updated_at": "2026-09-08T08:22:40Z"
+    },
+    {
+      "id": 550141505,
+      "name": "ente-1.7.29-beta-x64.pacman",
+      "size": 137748452,
+      "digest": "sha256:f0e9b2801c3d08cdb85ee214c4499ce5400e9a6fbb9bc279db6ba7874ef69b39",
+      "created_at": "2026-09-08T08:28:08Z",
+      "updated_at": "2026-09-08T08:28:11Z"
+    },
+    {
+      "id": 550141398,
+      "name": "ente-1.7.29-beta-x86_64.AppImage",
+      "size": 194738452,
+      "digest": "sha256:7ca3ddb801ab20936e1276c26f3b2899dbe94a60742daf1166890c90e6e81813",
+      "created_at": "2026-09-08T08:28:03Z",
+      "updated_at": "2026-09-08T08:28:07Z"
+    },
+    {
+      "id": 550141243,
+      "name": "ente-1.7.29-beta-x86_64.rpm",
+      "size": 134556537,
+      "digest": "sha256:fc93cee5417e7c1561e4e5c75c515bc437595b4998253a936f4697e850b39260",
+      "created_at": "2026-09-08T08:27:58Z",
+      "updated_at": "2026-09-08T08:28:03Z"
+    },
+    {
+      "id": 550133289,
+      "name": "ente-1.7.29-beta.exe",
+      "size": 320289848,
+      "digest": "sha256:8da74ae0998a2be434f1c9b60c85b0e344503119d36ee5b2684f2b8364b1e41d",
+      "created_at": "2026-09-08T08:22:23Z",
+      "updated_at": "2026-09-08T08:22:35Z"
+    }
+  ],
+  "archive": {
+    "repository": "AswinAsok/ente-desktop-validator",
+    "id": 384928838,
+    "tag": "baseline-photos-desktop-2026-09-08",
+    "assets": [
+      {
+        "id": 550955966,
+        "name": "ente-1.7.29-beta-aarch64.pacman",
+        "size": 129583368,
+        "digest": "sha256:0194f4dfbab793e24ed6babdf207f5a2602e99acd805e5f61abf426e389b8847",
+        "updatedAt": "2026-09-08T17:25:30Z"
+      },
+      {
+        "id": 550956285,
+        "name": "ente-1.7.29-beta-aarch64.rpm",
+        "size": 126699869,
+        "digest": "sha256:771196248662a1891cade5f0a9c67609a9b6807fa64718be0b416305c7470aa7",
+        "updatedAt": "2026-09-08T17:25:40Z"
+      },
+      {
+        "id": 550956509,
+        "name": "ente-1.7.29-beta-amd64.deb",
+        "size": 152011936,
+        "digest": "sha256:449d9451533672b8b3f4ba7f327f544e6cc1296b31b7c4ec8dff2833c4af2713",
+        "updatedAt": "2026-09-08T17:25:53Z"
+      },
+      {
+        "id": 550957417,
+        "name": "ente-1.7.29-beta-arm64.AppImage",
+        "size": 193031575,
+        "digest": "sha256:df33c8c039f8210a8aba311cb10906592510cef03264481b5c7fc947d65ced27",
+        "updatedAt": "2026-09-08T17:26:29Z"
+      },
+      {
+        "id": 550957716,
+        "name": "ente-1.7.29-beta-arm64.deb",
+        "size": 143667424,
+        "digest": "sha256:de940b3bbc48f03c57c7b3c95e7f9fed6564177cf6b0714f40bd81a14f0403c7",
+        "updatedAt": "2026-09-08T17:26:40Z"
+      },
+      {
+        "id": 550957962,
+        "name": "ente-1.7.29-beta-arm64.exe",
+        "size": 156650208,
+        "digest": "sha256:b863a372b0c70e3e00490a4cf8e854e5e6c49040f01664fa79d28c60511a0932",
+        "updatedAt": "2026-09-08T17:26:53Z"
+      },
+      {
+        "id": 550959433,
+        "name": "ente-1.7.29-beta-universal.dmg",
+        "size": 300826438,
+        "digest": "sha256:69417f2fa713398cbaf648b6f19313ccacda29fffc5c45e9931af485ea0f68ea",
+        "updatedAt": "2026-09-08T17:27:55Z"
+      },
+      {
+        "id": 550960092,
+        "name": "ente-1.7.29-beta-x64.exe",
+        "size": 164290928,
+        "digest": "sha256:1ba4643b680c2694cb2518d7a46f1dfe0a09b6064128a036cd426f8add17c189",
+        "updatedAt": "2026-09-08T17:28:11Z"
+      },
+      {
+        "id": 550960504,
+        "name": "ente-1.7.29-beta-x64.pacman",
+        "size": 137748452,
+        "digest": "sha256:f0e9b2801c3d08cdb85ee214c4499ce5400e9a6fbb9bc279db6ba7874ef69b39",
+        "updatedAt": "2026-09-08T17:28:23Z"
+      },
+      {
+        "id": 550961690,
+        "name": "ente-1.7.29-beta-x86_64.AppImage",
+        "size": 194738452,
+        "digest": "sha256:7ca3ddb801ab20936e1276c26f3b2899dbe94a60742daf1166890c90e6e81813",
+        "updatedAt": "2026-09-08T17:29:12Z"
+      },
+      {
+        "id": 550962071,
+        "name": "ente-1.7.29-beta-x86_64.rpm",
+        "size": 134556537,
+        "digest": "sha256:fc93cee5417e7c1561e4e5c75c515bc437595b4998253a936f4697e850b39260",
+        "updatedAt": "2026-09-08T17:29:23Z"
+      },
+      {
+        "id": 550962546,
+        "name": "ente-1.7.29-beta.exe",
+        "size": 320289848,
+        "digest": "sha256:8da74ae0998a2be434f1c9b60c85b0e344503119d36ee5b2684f2b8364b1e41d",
+        "updatedAt": "2026-09-08T17:29:49Z"
+      }
+    ]
+  }
+}

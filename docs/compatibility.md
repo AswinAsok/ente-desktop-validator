@@ -56,3 +56,9 @@ Candidate and baseline assets and source tags are rechecked after execution. Sav
 A runtime interface mismatch discovered after installation retains installation evidence and marks ML unsupported. A profile unsupported during preparation produces one preparation report and skips native jobs. Failed baseline installation/launch is explicitly attributed to baseline checks; fresh candidate scenarios continue independently.
 
 The upgrade fixture uses `hideDockIcon: false`, a native user preference present in v1.7.27, v1.7.28 and the reviewed nightly, plus an independent profile marker. It reads back the seed and reports expected/actual values after upgrading. The former native `themeMode` fixture was invalid for v1.7.28: that version did not declare it, and the nightly correctly synchronizes the native value from the renderer's theme.
+
+## Default nightly baseline: 2026-09-08
+
+`baselines/nightly.json` pins all 12 installers from source `2ffa837dab0540fd46c8863714ef944498e3b1d5`. They are stored unchanged in the standalone repository’s dated baseline release. Downloads still verify the original Ente SHA-256 and size. Preparation and finalization verify the archive IDs and hashes; moving the original upstream nightly tag is expected and does not invalidate this frozen baseline. A deleted or changed archive blocks the run. Explicit baseline inputs continue to resolve the requested live release.
+
+Selecting today’s identical build as candidate is blocked with an instruction to select a newer build or override the baseline. A later build under the same rolling tag/version can be tested against this snapshot; Linux DEB/RPM installations explicitly reinstall same-version candidates. Stable candidates retain their preceding-stable default. Historical validation reports continue to describe the baselines actually used in those runs.

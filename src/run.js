@@ -8,6 +8,7 @@ import {
   downloadAsset,
   download,
   fingerprint,
+  sameBuild,
 } from "./github.js";
 import {
   command,
@@ -56,9 +57,11 @@ export async function preparePlan(tag, baselineTag) {
     ? await getRelease(baselineTag)
     : await baselineRelease(tag);
   inventory(baseline);
-  baseline.source = await captureSource(baseline);
-  if (baseline.repository === release.repository && baseline.id === release.id)
-    throw new Error("Upgrade baseline must differ from the candidate");
+  if (!baseline.archive) baseline.source = await captureSource(baseline);
+  if (sameBuild(release, baseline))
+    throw blocked(
+      "Candidate is the pinned baseline build; select a newer nightly or supply a different --baseline",
+    );
   const revision = await validatorRevision();
   return {
     schemaVersion: 2,
@@ -242,6 +245,11 @@ export async function runScenario(
         files.candidate.path,
         work,
         path.join(artifacts, "candidate"),
+        {
+          reinstall:
+            scenario.mode === "upgrade" &&
+            versionOf(plan.release) === versionOf(plan.baseline),
+        },
       ),
     );
     // An NSIS installer may launch the app when completing. Stop it before the

@@ -45,7 +45,9 @@ const help = `Ente desktop validator (Node 24+)
 
 All installation and firewall operations require a fresh disposable native machine.
 inventory, matrix and inspect do not install or launch Ente. No command publishes Ente releases.
-Use GH_TOKEN for draft-release reads; dispatch/watch use the authenticated gh CLI.
+Nightly defaults use the archived 2026-09-08 nightly; stable defaults use the preceding stable.
+Use GH_TOKEN for draft-release reads; BASELINE_READ_TOKEN optionally reads the private baseline archive.
+Dispatch/watch use the authenticated gh CLI.
 `;
 
 async function runCLI(argv) {

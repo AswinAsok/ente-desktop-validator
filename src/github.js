@@ -4,7 +4,7 @@ import { createWriteStream } from "node:fs";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { createHash } from "node:crypto";
-import { hashFile, inside, blocked, sleep } from "./common.js";
+import { hashFile, inside, blocked, sleep, json } from "./common.js";
 import { REPOSITORY, releaseDescriptor, versionOf } from "./matrix.js";
 
 export async function api(
@@ -58,6 +58,18 @@ export async function getRelease(input) {
 }
 
 export async function baselineRelease(tag) {
+  if (releaseDescriptor(tag).channel === "nightly") {
+    const baseline = await json(
+      new URL("../baselines/nightly.json", import.meta.url),
+    );
+    if (
+      !baseline.archive ||
+      !/^[a-f0-9]{40}$/.test(baseline.source?.commit ?? "")
+    )
+      throw blocked("Pinned nightly baseline is incomplete");
+    await assertArchiveUnchanged(baseline);
+    return baseline;
+  }
   const target = versionOf(tag).split("-")[0].split(".").map(Number);
   const older = (version) => {
     const parts = versionOf(version).split("-")[0].split(".").map(Number);
@@ -96,6 +108,7 @@ export function identity(release) {
     ...releaseDescriptor(release),
     id: release.id,
     source: release.source ?? null,
+    ...(release.archive ? { archive: release.archive } : {}),
     assets: release.assets
       .map((a) => ({
         id: a.id,
@@ -116,6 +129,67 @@ export function assertUnchanged(before, after) {
     throw new Error(
       "Release assets changed during validation; all previous results are invalid",
     );
+}
+
+export function archiveIdentity(release, repository) {
+  return {
+    repository,
+    id: release.id,
+    tag: release.tag_name,
+    assets: release.assets
+      .map((a) => ({
+        id: a.id,
+        name: a.name,
+        size: a.size,
+        digest: a.digest,
+        updatedAt: a.updated_at,
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name)),
+  };
+}
+export async function assertArchiveUnchanged(release) {
+  const expected = release.archive;
+  if (!expected || !/^[\w.-]+\/[\w.-]+$/.test(expected.repository))
+    throw blocked("Invalid archived baseline repository");
+  const current = await api(
+    `repos/${expected.repository}/releases/${expected.id}`,
+    {
+      token:
+        process.env.BASELINE_READ_TOKEN ??
+        process.env.GH_TOKEN ??
+        process.env.GITHUB_TOKEN,
+    },
+  );
+  if (
+    JSON.stringify(archiveIdentity(current, expected.repository)) !==
+    JSON.stringify(expected)
+  )
+    throw blocked(
+      "Pinned nightly baseline archive changed or lost assets; restore the original snapshot",
+    );
+  if (
+    expected.assets.length !== release.assets.length ||
+    release.assets.some(
+      (a) =>
+        !expected.assets.some(
+          (b) =>
+            b.name === a.name && b.size === a.size && b.digest === a.digest,
+        ),
+    )
+  )
+    throw blocked("Archived baseline hashes differ from the original nightly");
+}
+export function sameBuild(a, b) {
+  const bytes = (r) =>
+    r.assets
+      .map((x) => [x.name, x.size, x.digest])
+      .sort((x, y) => x[0].localeCompare(y[0]));
+  return (
+    releaseDescriptor(a).repository === releaseDescriptor(b).repository &&
+    versionOf(a) === versionOf(b) &&
+    a.source?.commit === b.source?.commit &&
+    JSON.stringify(bytes(a)) === JSON.stringify(bytes(b))
+  );
 }
 
 export async function download(url, target, { sha256, size, token } = {}) {
@@ -168,13 +242,26 @@ export async function downloadAsset(asset, directory, release) {
     throw blocked("Release asset has no GitHub SHA-256 digest");
   if (asset.name !== asset.name.replaceAll("/", "").replaceAll("\\", ""))
     throw new Error("Unsafe asset name");
+  const archived = release.archive?.assets.find((a) => a.name === asset.name);
+  if (
+    release.archive &&
+    (!archived ||
+      archived.digest !== asset.digest ||
+      archived.size !== asset.size)
+  )
+    throw blocked(
+      "Archived installer does not match the original nightly hash and size",
+    );
   return download(
-    `https://api.github.com/repos/${releaseDescriptor(release).repository}/releases/assets/${asset.id}`,
+    `https://api.github.com/repos/${release.archive?.repository ?? releaseDescriptor(release).repository}/releases/assets/${archived?.id ?? asset.id}`,
     inside(directory, asset.name),
     {
       sha256: asset.digest.slice(7),
       size: asset.size,
-      token: process.env.GH_TOKEN ?? process.env.GITHUB_TOKEN,
+      token:
+        (release.archive ? process.env.BASELINE_READ_TOKEN : undefined) ??
+        process.env.GH_TOKEN ??
+        process.env.GITHUB_TOKEN,
     },
   );
 }

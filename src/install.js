@@ -76,7 +76,13 @@ export async function preflight(scenario, work, disposable) {
   };
 }
 
-export async function install(scenario, assetPath, work, logs) {
+export async function install(
+  scenario,
+  assetPath,
+  work,
+  logs,
+  { reinstall = false } = {},
+) {
   await fs.mkdir(logs, { recursive: true });
   const root = installRoot(scenario, work);
   const options = { timeout: 600_000, log: path.join(logs, "installer.json") };
@@ -168,8 +174,14 @@ export async function install(scenario, assetPath, work, logs) {
     const commands = {
       // APT must acquire the local file URI even when dependencies are cached.
       // --no-download suppresses that too; OS rules already deny repository egress.
-      deb: ["apt-get", ["install", "-y", assetPath]],
-      rpm: ["dnf", ["--cacheonly", "install", "-y", assetPath]],
+      deb: [
+        "apt-get",
+        ["install", ...(reinstall ? ["--reinstall"] : []), "-y", assetPath],
+      ],
+      rpm: [
+        "dnf",
+        ["--cacheonly", reinstall ? "reinstall" : "install", "-y", assetPath],
+      ],
       pacman: ["pacman", ["-U", "--noconfirm", assetPath]],
     };
     const [file, args] = commands[scenario.format];
