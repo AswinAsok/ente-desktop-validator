@@ -17,3 +17,9 @@ jobs:
       - run: npm ci --ignore-scripts
       - run: npm test
       - run: npm run check
+      - name: Validate Linux firewall syntax without applying rules
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update && sudo apt-get install -y nftables
+          node --input-type=module -e 'import {linuxRules} from "./src/network.js"; import fs from "node:fs"; fs.writeFileSync("/tmp/ente-validator-rules.nft",linuxRules(["192.0.2.1","2001:db8::1"],"online"));'
+          sudo nft --check --file /tmp/ente-validator-rules.nft

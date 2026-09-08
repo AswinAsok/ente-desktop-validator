@@ -12,6 +12,7 @@ import {
   writeJSON,
 } from "./common.js";
 import { stopApp } from "./install.js";
+import { versionOf } from "./matrix.js";
 const require = createRequire(import.meta.url);
 
 export function assertEmbedding(value, size, label) {
@@ -245,8 +246,17 @@ export async function instrument(
           ? await window.electron.appVersion()
           : null,
     }));
-    if (bridge.version !== expectedVersion)
-      throw new Error("Preload bridge missing or reports wrong version");
+    await writeJSON(path.join(directory, "runtime-state.json"), {
+      state,
+      bridge,
+    });
+    if (
+      typeof bridge.version !== "string" ||
+      versionOf(bridge.version) !== expectedVersion
+    )
+      throw new Error(
+        `Preload bridge missing or reports wrong version: ${JSON.stringify(bridge)}`,
+      );
     await page.screenshot({ path: path.join(directory, "renderer.png") });
     return {
       electron,

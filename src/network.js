@@ -22,7 +22,9 @@ export function linuxRules(ips, mode) {
     ...(mode === "online"
       ? ["udp dport 53 accept;", "tcp dport 53 accept;"]
       : []),
-    "} }",
+    "}",
+    "}",
+    "",
   ].join("\n");
 }
 export function macRules(ips, mode) {
@@ -98,7 +100,7 @@ export class NetworkPolicy {
       await powershell(`Get-NetFirewallRule -Direction Outbound -Enabled True | Disable-NetFirewallRule
 Set-NetFirewallProfile -Profile Domain,Public,Private -Enabled True -DefaultOutboundAction Block
 Get-NetFirewallRule -Group 'EnteValidator' -ErrorAction SilentlyContinue | Remove-NetFirewallRule
-New-NetFirewallRule -DisplayName 'Ente validator loopback' -Group 'EnteValidator' -Direction Outbound -Action Allow -RemoteAddress '127.0.0.1','::1' | Out-Null
+New-NetFirewallRule -DisplayName 'Ente validator loopback' -Group 'EnteValidator' -Direction Outbound -Action Allow -RemoteAddress '127.0.0.1' | Out-Null
 ${ips.length ? `New-NetFirewallRule -DisplayName 'Ente validator models' -Group 'EnteValidator' -Direction Outbound -Action Allow -Protocol TCP -RemotePort 443 -RemoteAddress @(${ips.map(psQuote).join(",")}) | Out-Null` : ""}
 ${mode === "online" ? "foreach ($p in @('TCP','UDP')) { New-NetFirewallRule -DisplayName ('Ente validator DNS '+$p) -Group 'EnteValidator' -Direction Outbound -Action Allow -Protocol $p -RemotePort 53 | Out-Null }" : ""}`);
     }
@@ -159,7 +161,10 @@ ${mode === "online" ? "foreach ($p in @('TCP','UDP')) { New-NetFirewallRule -Dis
         "table",
         "inet",
         "ente_validator",
-      ]);
+      ]).catch((error) => {
+        if (!error.result?.stderr.includes("No such file or directory"))
+          throw error;
+      });
     else if (process.platform === "win32")
       await command("netsh", ["advfirewall", "import", state.backup]);
     else {

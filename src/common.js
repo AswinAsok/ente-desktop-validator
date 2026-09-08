@@ -99,12 +99,19 @@ export function command(file, args = [], options = {}) {
 
 export function powershell(script, options) {
   const encoded = Buffer.from(
-    `$ErrorActionPreference = 'Stop'\n${script}`,
+    `$ErrorActionPreference = 'Stop'\n$ProgressPreference = 'SilentlyContinue'\n${script}`,
     "utf16le",
   ).toString("base64");
   return command(
     "powershell.exe",
-    ["-NoProfile", "-NonInteractive", "-EncodedCommand", encoded],
+    [
+      "-NoProfile",
+      "-NonInteractive",
+      "-OutputFormat",
+      "Text",
+      "-EncodedCommand",
+      encoded,
+    ],
     options,
   );
 }
