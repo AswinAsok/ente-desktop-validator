@@ -4,24 +4,38 @@ import { createWriteStream } from "node:fs";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { createHash } from "node:crypto";
-import { hashFile, inside, blocked } from "./common.js";
+import { hashFile, inside, blocked, sleep } from "./common.js";
 import { REPOSITORY, releaseRef, versionOf } from "./matrix.js";
 
 export async function api(
   endpoint,
   { token = process.env.GH_TOKEN ?? process.env.GITHUB_TOKEN, ...options } = {},
 ) {
-  const res = await fetch(`https://api.github.com/${endpoint}`, {
-    ...options,
-    headers: {
-      Accept: "application/vnd.github+json",
-      "X-GitHub-Api-Version": "2022-11-28",
-      "User-Agent": "ente-desktop-validator",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...options.headers,
-    },
-    signal: AbortSignal.timeout(60_000),
-  });
+  let res;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      res = await fetch(`https://api.github.com/${endpoint}`, {
+        ...options,
+        headers: {
+          Accept: "application/vnd.github+json",
+          "X-GitHub-Api-Version": "2022-11-28",
+          "User-Agent": "ente-desktop-validator",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          ...options.headers,
+        },
+        signal: AbortSignal.timeout(60_000),
+      });
+      break;
+    } catch (error) {
+      // Isolation can leave a pooled connection stale. Retry read-only API
+      // transport failures; never retry permission errors or mutate releases.
+      if (attempt === 2 || (options.method && options.method !== "GET"))
+        throw blocked(
+          `GitHub request unavailable: ${error.message} (${error.cause?.code ?? "transport failure"})`,
+        );
+      await sleep(1000 * (attempt + 1));
+    }
+  }
   if (!res.ok) throw blocked(`GitHub ${endpoint}: HTTP ${res.status}`);
   return res.status === 204 ? undefined : res.json();
 }

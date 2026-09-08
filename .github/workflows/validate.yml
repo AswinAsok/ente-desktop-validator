@@ -89,6 +89,17 @@ jobs:
         if: always()
         shell: bash
         run: node src/cli.js network-restore --out "reports/scenarios/$SCENARIO"
+      - name: Preserve check results in the job summary
+        if: always()
+        shell: bash
+        run: |
+          summary="reports/scenarios/$SCENARIO/summary.md"
+          if [[ -f "$summary" ]]; then
+            cat "$summary"
+            cat "$summary" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Scenario $SCENARIO did not produce a complete report." >> "$GITHUB_STEP_SUMMARY"
+          fi
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:

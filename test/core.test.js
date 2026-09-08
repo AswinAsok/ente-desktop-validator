@@ -12,6 +12,7 @@ import {
   assertUnchanged,
   download,
   baselineRelease,
+  api,
 } from "../src/github.js";
 import { overall, aggregate, requiredChecks, check } from "../src/report.js";
 import {
@@ -202,6 +203,25 @@ test("preceding stable uses numeric versions and excludes drafts/prereleases", a
     ]),
   );
   assert.equal((await baselineRelease("v1.7.28")).tag_name, "v1.7.27");
+});
+test("GitHub reads retry transport loss but never bypass HTTP permission failures", async (t) => {
+  let calls = 0;
+  const mock = t.mock.method(globalThis, "fetch", async () => {
+    if (++calls === 1) throw new TypeError("stale pooled connection");
+    return Response.json({ ok: true });
+  });
+  assert.deepEqual(await api("test"), { ok: true });
+  assert.equal(calls, 2);
+  calls = 0;
+  mock.mock.mockImplementation(async () => {
+    calls++;
+    return new Response("denied", { status: 403 });
+  });
+  await assert.rejects(
+    api("test"),
+    (error) => error.status === "blocked" && /HTTP 403/.test(error.message),
+  );
+  assert.equal(calls, 1);
 });
 test("downloads reject HTTP failure, size/hash corruption, and clear partial files", async (t) => {
   const dir = await temporary(t),
