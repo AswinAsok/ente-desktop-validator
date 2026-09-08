@@ -66,6 +66,8 @@ export class NetworkPolicy {
       const state = { platform: process.platform, hosts, ips };
       if (process.platform === "win32") {
         state.backup = path.join(this.directory, "firewall.wfw");
+        // netsh export refuses to replace the backup from an earlier restored phase.
+        await fs.rm(state.backup, { force: true });
         await command("netsh", ["advfirewall", "export", state.backup]);
       } else if (process.platform === "darwin") {
         state.enabled = (
