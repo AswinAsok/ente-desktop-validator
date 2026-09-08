@@ -229,19 +229,9 @@ export async function runScenario(
         }
       });
       await requireCheck("profile-seed", async () => {
-        await fs.mkdir(profileDirectory, { recursive: true });
-        marker = randomUUID();
-        await fs.writeFile(
-          path.join(profileDirectory, "validator-marker.txt"),
-          marker,
-        );
-        const preferencesFile = path.join(
-          profileDirectory,
-          "userPreferences.json",
-        );
-        const preferences = await json(preferencesFile).catch(() => ({}));
-        await writeJSON(preferencesFile, { ...preferences, themeMode: "dark" });
-        return { marker, themeMode: "dark" };
+        const seeded = await seedUpgradeProfile(profileDirectory);
+        marker = seeded.marker;
+        return seeded;
       });
       await app.dispose();
       app = undefined;
@@ -304,18 +294,7 @@ export async function runScenario(
     await requireCheck("media-tools", () => mediaTools(app));
     if (scenario.mode === "upgrade")
       await requireCheck("profile-preserved", async () => {
-        const actual = await fs.readFile(
-          path.join(profileDirectory, "validator-marker.txt"),
-          "utf8",
-        );
-        const preferences = await json(
-          path.join(profileDirectory, "userPreferences.json"),
-        );
-        if (actual !== marker || preferences.themeMode !== "dark")
-          throw new Error(
-            "Upgrade lost the seeded profile marker or preference",
-          );
-        return { markerPreserved: true, themeMode: preferences.themeMode };
+        return verifyUpgradeProfile(profileDirectory, marker);
       });
     await requireCheck("ml-online", () =>
       runML(session, profile, files.fixtures, online),
@@ -432,4 +411,38 @@ export async function prepareReport(tag, baselineTag, directory) {
       await fs.appendFile(process.env.GITHUB_STEP_SUMMARY, markdown(report));
     throw error;
   }
+}
+
+// hideDockIcon is an actual native preference in both reviewed source versions
+// (and the v1.7.27 baseline). themeMode was not a native preference in v1.7.28.
+export async function seedUpgradeProfile(directory) {
+  await fs.mkdir(directory, { recursive: true });
+  const marker = randomUUID();
+  await fs.writeFile(path.join(directory, "validator-marker.txt"), marker);
+  const file = path.join(directory, "userPreferences.json");
+  const preferences = await json(file).catch((error) => {
+    if (error.code === "ENOENT") return {};
+    throw error;
+  });
+  await writeJSON(file, { ...preferences, hideDockIcon: false });
+  await verifyUpgradeProfile(directory, marker);
+  return { marker, preference: { hideDockIcon: false } };
+}
+export async function verifyUpgradeProfile(directory, marker) {
+  const actual = await fs.readFile(
+    path.join(directory, "validator-marker.txt"),
+    "utf8",
+  );
+  const preferences = await json(path.join(directory, "userPreferences.json"));
+  const detail = {
+    markerPreserved: actual === marker,
+    preference: "hideDockIcon",
+    expected: false,
+    actual: preferences.hideDockIcon ?? null,
+  };
+  if (!detail.markerPreserved || detail.actual !== detail.expected)
+    throw new Error(
+      `Upgrade profile preservation failed: ${JSON.stringify(detail)}`,
+    );
+  return detail;
 }

@@ -1,3 +1,6 @@
+// Synthetic failure cases must not append to the real workflow job summary.
+delete process.env.GITHUB_STEP_SUMMARY;
+
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs/promises";

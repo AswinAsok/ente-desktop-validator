@@ -93,7 +93,7 @@ xvfb-run -a node src/cli.js run --release v1.7.28 --baseline v1.7.27 \
   --scenario linux-x64-deb-upgrade --disposable --out reports/deb-upgrade
 ```
 
-Every scenario needs a new report directory. Upgrades install the baseline, launch it, seed `themeMode: dark` and a marker in the default test profile, install the candidate, and check that both survived. They test installer replacement, not the automatic updater's handoff or account migration.
+Every scenario needs a new report directory. Upgrades install the baseline, launch it, seed the supported native preference `hideDockIcon: false` and a marker in the default test profile, install the candidate, and check that both survived. They test installer replacement, not the automatic updater's handoff or account migration.
 
 The controller first downloads installers/fixtures and caches package-manager dependencies. It then applies OS egress rules: online tests allow the resolved model CDN IPs on HTTPS plus DNS and loopback; offline tests allow only loopback. Native `curl` probes verify enforcement. On hosted Windows, only the running GitHub Actions control executables retain HTTPS access so isolation does not cancel the job; their paths are reported. Ente, its native workers, and the probe process receive no such exception. GitHub connectivity resumes when the firewall is restored, so live job logs may pause during inference.
 

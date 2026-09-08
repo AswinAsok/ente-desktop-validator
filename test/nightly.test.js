@@ -1,3 +1,6 @@
+// Synthetic failure cases must not append to the real workflow job summary.
+delete process.env.GITHUB_STEP_SUMMARY;
+
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs/promises";
@@ -29,7 +32,12 @@ import {
   reviewedProfile,
   profileIdentity,
 } from "../src/compatibility.js";
-import { prepareReport, assertPlan } from "../src/run.js";
+import {
+  prepareReport,
+  assertPlan,
+  seedUpgradeProfile,
+  verifyUpgradeProfile,
+} from "../src/run.js";
 import { aggregate, requiredChecks, saveReport } from "../src/report.js";
 const tag = "photos-desktop-v1.7.29-beta";
 const release = () => ({
@@ -323,5 +331,65 @@ test("downstream checks identify the originating prerequisite", async (t) => {
   assert.match(
     report.checks.find((c) => c.id === "ml-online").error,
     /Blocked by installed-files: Missing ente.exe/,
+  );
+});
+
+test("changed nightly source contracts and mismatched source versions remain unsupported or blocked", async (t) => {
+  let version = "1.7.29-beta";
+  const r = { ...release(), source: { commit: "a".repeat(40) } };
+  t.mock.method(globalThis, "fetch", async (url) => {
+    if (String(url).includes("/git/trees/"))
+      return Response.json({
+        tree: [
+          {
+            path: "desktop/src/new.ts",
+            mode: "100644",
+            type: "blob",
+            sha: "changed",
+          },
+        ],
+      });
+    return Response.json({
+      encoding: "base64",
+      content: Buffer.from(JSON.stringify({ version })).toString("base64"),
+    });
+  });
+  await assert.rejects(
+    reviewedProfile(r),
+    (e) =>
+      e.status === "unsupported" &&
+      /No reviewed nightly compatibility contract/.test(e.message),
+  );
+  version = "1.7.30-beta";
+  await assert.rejects(
+    reviewedProfile(r),
+    (e) => e.status === "blocked" && /version does not match/.test(e.message),
+  );
+});
+
+test("upgrade fixture preserves a real native preference and detects its loss independently of renderer theme", async (t) => {
+  const dir = await temporary(t),
+    file = path.join(dir, "userPreferences.json");
+  await fs.writeFile(
+    file,
+    JSON.stringify({ themeMode: "system", hideDockIcon: true }),
+  );
+  const { marker } = await seedUpgradeProfile(dir);
+  assert.equal((await verifyUpgradeProfile(dir, marker)).actual, false);
+  await fs.writeFile(
+    file,
+    JSON.stringify({ themeMode: "light", hideDockIcon: false }),
+  );
+  assert.equal((await verifyUpgradeProfile(dir, marker)).markerPreserved, true);
+  await fs.writeFile(file, JSON.stringify({ hideDockIcon: true }));
+  await assert.rejects(
+    verifyUpgradeProfile(dir, marker),
+    /preservation failed/,
+  );
+  await fs.writeFile(file, JSON.stringify({ hideDockIcon: false }));
+  await fs.writeFile(path.join(dir, "validator-marker.txt"), "replaced");
+  await assert.rejects(
+    verifyUpgradeProfile(dir, marker),
+    /markerPreserved.*false/,
   );
 });
