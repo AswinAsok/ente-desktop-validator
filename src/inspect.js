@@ -153,7 +153,7 @@ export async function inspectInstalled(root, scenario, profile, version) {
   await required(app.asar);
   for (const name of profile.asarFiles) {
     try {
-      if (!(statFile(app.asar, name, false).size > 0))
+      if (!(statFile(app.asar, path.normalize(name), false).size > 0))
         throw new Error("Empty ASAR member");
     } catch (error) {
       errors.push(`app.asar/${name}: ${error.message}`);
@@ -167,7 +167,7 @@ export async function inspectInstalled(root, scenario, profile, version) {
       throw new Error(
         `Unexpected installed package ${metadata.name}@${metadata.version}`,
       );
-    const files = listPackage(app.asar);
+    const files = listPackage(app.asar).map((file) => file.replaceAll("\\", "/"));
     if (
       !files.some(
         (p) => p.startsWith("/out/_next/static/") && p.endsWith(".js"),
