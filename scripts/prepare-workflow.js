@@ -1,5 +1,5 @@
 import fs from "node:fs/promises";
-import { preparePlan } from "../src/run.js";
+import { prepareReport } from "../src/run.js";
 import { writeJSON } from "../src/common.js";
 import { api } from "../src/github.js";
 
@@ -7,9 +7,10 @@ if (/^(ente|ente-io)\//i.test(process.env.GITHUB_REPOSITORY ?? ""))
   throw new Error(
     "Run this workflow only in the standalone validator repository",
   );
-const plan = await preparePlan(
+const plan = await prepareReport(
   process.env.RELEASE,
   process.env.BASELINE || undefined,
+  "reports/plan",
 );
 const selected = process.env.SCENARIOS?.split(",")
   .map((id) => id.trim())

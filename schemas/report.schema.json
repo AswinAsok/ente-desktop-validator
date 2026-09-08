@@ -1,29 +1,71 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Ente desktop validator report v1",
+  "title": "Ente desktop validator report v2",
   "type": "object",
   "required": ["schemaVersion", "kind", "status", "release", "finishedAt"],
   "properties": {
-    "schemaVersion": { "const": 1 },
-    "kind": { "enum": ["scenario", "aggregate", "static-inspection"] },
-    "status": { "$ref": "#/$defs/status" },
+    "schemaVersion": {
+      "const": 2
+    },
+    "kind": {
+      "enum": ["scenario", "aggregate", "static-inspection", "preparation"]
+    },
+    "status": {
+      "$ref": "#/$defs/status"
+    },
     "release": {
       "type": "object",
-      "required": ["tag"],
-      "properties": { "tag": { "type": "string" } }
+      "required": ["repository", "tag", "version", "channel"],
+      "properties": {
+        "tag": {
+          "type": "string"
+        },
+        "repository": {
+          "enum": ["ente/photos-desktop", "ente/nightly"]
+        },
+        "version": {
+          "type": "string"
+        },
+        "channel": {
+          "enum": ["stable", "nightly"]
+        },
+        "source": {
+          "type": ["object", "null"]
+        }
+      }
     },
-    "releaseFingerprint": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
-    "validatorRevision": { "type": "string" },
-    "startedAt": { "type": "string" },
-    "finishedAt": { "type": "string" },
-    "checks": { "type": "array", "items": { "$ref": "#/$defs/check" } },
+    "releaseFingerprint": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "validatorRevision": {
+      "type": "string"
+    },
+    "startedAt": {
+      "type": "string"
+    },
+    "finishedAt": {
+      "type": "string"
+    },
+    "checks": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/check"
+      }
+    },
     "scenario": {
       "type": "object",
       "required": ["id", "platform", "arch", "format", "mode", "asset"],
       "properties": {
-        "id": { "type": "string" },
-        "platform": { "enum": ["darwin", "win32", "linux"] },
-        "arch": { "enum": ["x64", "arm64"] },
+        "id": {
+          "type": "string"
+        },
+        "platform": {
+          "enum": ["darwin", "win32", "linux"]
+        },
+        "arch": {
+          "enum": ["x64", "arm64"]
+        },
         "format": {
           "enum": [
             "nsis",
@@ -36,8 +78,12 @@
             "AppImage"
           ]
         },
-        "mode": { "enum": ["fresh", "upgrade"] },
-        "asset": { "type": "string" }
+        "mode": {
+          "enum": ["fresh", "upgrade"]
+        },
+        "asset": {
+          "type": "string"
+        }
       }
     },
     "scenarios": {
@@ -46,18 +92,45 @@
         "type": "object",
         "required": ["id", "status"],
         "properties": {
-          "id": { "type": "string" },
-          "status": { "$ref": "#/$defs/status" },
-          "error": { "type": "string" }
+          "id": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/$defs/status"
+          },
+          "error": {
+            "type": "string"
+          }
         }
       }
     },
-    "fullCoverage": { "type": "boolean" },
-    "runtimeTested": { "type": "boolean" }
+    "fullCoverage": {
+      "type": "boolean"
+    },
+    "runtimeTested": {
+      "type": "boolean"
+    },
+    "compatibilityProfile": {
+      "type": "object",
+      "required": ["version", "source", "runtimeAdapter", "sha256"]
+    },
+    "expectedScenarios": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "baseline": {
+      "type": ["object", "null"]
+    }
   },
   "allOf": [
     {
-      "if": { "properties": { "kind": { "const": "scenario" } } },
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "scenario"
+          }
+        }
+      },
       "then": {
         "required": [
           "scenario",
@@ -65,41 +138,88 @@
           "releaseFingerprint",
           "validatorRevision",
           "baseline",
-          "host"
+          "host",
+          "compatibilityProfile",
+          "expectedScenarios"
         ]
       }
     },
     {
-      "if": { "properties": { "kind": { "const": "aggregate" } } },
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "aggregate"
+          }
+        }
+      },
       "then": {
         "required": [
           "scenarios",
           "expectedScenarios",
           "fullCoverage",
           "releaseFingerprint",
-          "validatorRevision"
+          "validatorRevision",
+          "compatibilityProfile"
         ]
       }
     },
     {
-      "if": { "properties": { "kind": { "const": "static-inspection" } } },
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "static-inspection"
+          }
+        }
+      },
       "then": {
         "required": ["checks", "runtimeTested"],
-        "properties": { "runtimeTested": { "const": false } }
+        "properties": {
+          "runtimeTested": {
+            "const": false
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "preparation"
+          }
+        }
+      },
+      "then": {
+        "required": ["checks", "runtimeTested"],
+        "properties": {
+          "runtimeTested": {
+            "const": false
+          }
+        }
       }
     }
   ],
   "$defs": {
-    "status": { "enum": ["passed", "failed", "blocked", "unsupported"] },
+    "status": {
+      "enum": ["passed", "failed", "blocked", "unsupported"]
+    },
     "check": {
       "type": "object",
       "required": ["id", "status"],
       "properties": {
-        "id": { "type": "string" },
-        "status": { "$ref": "#/$defs/status" },
-        "durationMs": { "type": "number", "minimum": 0 },
+        "id": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/status"
+        },
+        "durationMs": {
+          "type": "number",
+          "minimum": 0
+        },
         "detail": {},
-        "error": { "type": "string" }
+        "error": {
+          "type": "string"
+        }
       }
     }
   }

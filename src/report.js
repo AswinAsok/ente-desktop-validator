@@ -44,7 +44,7 @@ export function requiredChecks(scenario) {
 export async function newReport(scenario, release, baseline) {
   const revision = await validatorRevision();
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     kind: "scenario",
     scenario,
     release: identity(release),
@@ -84,20 +84,25 @@ const cell = (value) =>
     .replaceAll("\n", " ")
     .replaceAll("<", "&lt;");
 export function markdown(report) {
+  const cause = report.checks?.find((c) => c.status !== "passed");
   const rows =
     report.kind === "aggregate"
       ? report.scenarios.map((r) => [r.id, r.status, r.error ?? ""])
       : report.checks.map((c) => [c.id, c.status, c.error ?? ""]);
-  return `# Ente desktop validation: ${cell(report.status)}\n\nRelease: ${cell(report.release?.tag)}\n\n${report.kind === "aggregate" ? "Full coverage requires every planned scenario to pass." : "A single scenario is not a full release approval."}\n\n| Check | Result | Detail |\n|---|---|---|\n${rows.map((row) => `| ${row.map(cell).join(" | ")} |`).join("\n")}\n`;
+  return `# Ente desktop validation: ${cell(report.status)}\n\nRelease: ${cell(report.release?.repository)} ${cell(report.release?.tag)}\n\n${cause ? `First issue: ${cell(cause.id)} — ${cell(cause.error)}\n\n` : ""}${report.kind === "aggregate" ? "Full coverage requires every planned scenario to pass." : report.kind === "preparation" ? "Preparation stopped before native validation began." : "A single scenario is not a full release approval."}\n\n| Check | Result | Detail |\n|---|---|---|\n${rows.map((row) => `| ${row.map(cell).join(" | ")} |`).join("\n")}\n`;
 }
 export async function saveReport(report, directory) {
   if (report.kind === "scenario") {
+    const cause = report.checks.find((c) => c.status !== "passed");
     for (const id of requiredChecks(report.scenario))
       if (!report.checks.some((c) => c.id === id))
         report.checks.push({
           id,
           status: "blocked",
-          error: "Prerequisite did not complete",
+          error: cause
+            ? `Blocked by ${cause.id}: ${cause.error ?? cause.status}`
+            : "Required check was not executed",
+          prerequisite: cause?.id,
         });
     report.status = overall(report.checks);
   }
@@ -108,7 +113,7 @@ export async function saveReport(report, directory) {
 }
 
 export function aggregate(plan, reports) {
-  const expectedMatrix = matrix(plan.release.tag_name);
+  const expectedMatrix = matrix(plan.release);
   const completePlan =
     JSON.stringify(plan.scenarios) === JSON.stringify(expectedMatrix);
   const scenarios = plan.scenarios.map((scenario) => {
@@ -123,13 +128,16 @@ export function aggregate(plan, reports) {
       };
     const r = matches[0];
     if (
-      r.schemaVersion !== 1 ||
+      r.schemaVersion !== 2 ||
       r.kind !== "scenario" ||
       !Array.isArray(r.checks) ||
       r.checks.some((c) => !c || typeof c.id !== "string") ||
       r.releaseFingerprint !== plan.releaseFingerprint ||
       JSON.stringify(r.release) !== JSON.stringify(identity(plan.release)) ||
       r.validatorRevision !== plan.validatorRevision ||
+      JSON.stringify(r.compatibilityProfile) !==
+        JSON.stringify(plan.compatibilityProfile) ||
+      r.expectedScenarios !== plan.expectedScenarios ||
       JSON.stringify(r.scenario) !== JSON.stringify(scenario) ||
       JSON.stringify(r.baseline) !==
         JSON.stringify(plan.baseline ? identity(plan.baseline) : null)
@@ -173,11 +181,13 @@ export function aggregate(plan, reports) {
         error: "Unexpected scenario report",
       });
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     kind: "aggregate",
     release: identity(plan.release),
     releaseFingerprint: plan.releaseFingerprint,
     validatorRevision: plan.validatorRevision,
+    baseline: plan.baseline ? identity(plan.baseline) : null,
+    compatibilityProfile: plan.compatibilityProfile,
     expectedScenarios: expectedMatrix.length,
     fullCoverage: completePlan && scenarios.every((s) => s.status === "passed"),
     scenarios,

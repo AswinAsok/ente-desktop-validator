@@ -4,9 +4,15 @@ import path from "node:path";
 import { parseArgs } from "node:util";
 import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
-import { matrix, combinations, releaseRef, inventory } from "./matrix.js";
-import { getRelease, assertUnchanged } from "./github.js";
-import { preparePlan, runScenario } from "./run.js";
+import {
+  matrix,
+  combinations,
+  releaseRef,
+  releaseDescriptor,
+  inventory,
+} from "./matrix.js";
+import { getRelease } from "./github.js";
+import { prepareReport, runScenario, assertPlan } from "./run.js";
 import {
   aggregate,
   collectReports,
@@ -17,6 +23,11 @@ import {
 } from "./report.js";
 import { loadProfile, inspectInstalled, fileInventory } from "./inspect.js";
 import { writeJSON, json, command, sleep } from "./common.js";
+import {
+  recheckRelease,
+  captureSource,
+  reviewedProfile,
+} from "./compatibility.js";
 import { NetworkPolicy } from "./network.js";
 
 const help = `Ente desktop validator (Node 24+)
@@ -84,7 +95,7 @@ async function runCLI(argv) {
   if (action === "inventory") {
     const release = await getRelease(releaseRef(opts.release));
     const result = {
-      schemaVersion: 1,
+      schemaVersion: 2,
       kind: "inventory",
       tag: release.tag_name,
       release,
@@ -98,7 +109,11 @@ async function runCLI(argv) {
     return 0;
   }
   if (action === "prepare") {
-    const plan = await preparePlan(releaseRef(opts.release), opts.baseline);
+    const plan = await prepareReport(
+      releaseRef(opts.release),
+      opts.baseline,
+      directory,
+    );
     await writeJSON(path.join(directory, "plan.json"), plan);
     console.log(path.join(directory, "plan.json"));
     return 0;
@@ -110,15 +125,21 @@ async function runCLI(argv) {
       scenario = combinations(tag).find((s) => s.key === opts.combination);
     if (!scenario) throw new Error("Unknown combination");
     const report = {
-      schemaVersion: 1,
+      schemaVersion: 2,
       kind: "static-inspection",
-      release: { tag },
+      release: releaseDescriptor(tag),
       checks: [],
       runtimeTested: false,
     };
     await check(report, "installed-files", async () => {
       const root = path.resolve(opts.root),
         profile = await loadProfile(tag);
+      if (releaseDescriptor(tag).channel === "nightly") {
+        const release = await getRelease(tag);
+        release.source = await captureSource(release);
+        Object.assign(profile, await reviewedProfile(release));
+        report.release = release;
+      }
       await writeJSON(
         path.join(directory, "installed-files.json"),
         await fileInventory(root),
@@ -137,7 +158,7 @@ async function runCLI(argv) {
       throw new Error("--scenario is required; use matrix to list IDs");
     const plan = opts.plan
       ? await json(opts.plan)
-      : await preparePlan(releaseRef(opts.release), opts.baseline);
+      : await prepareReport(releaseRef(opts.release), opts.baseline, directory);
     const report = await runScenario(plan, opts.scenario, directory, {
       disposable: opts.disposable,
       unavailable: opts.unavailable,
@@ -148,11 +169,12 @@ async function runCLI(argv) {
   if (action === "aggregate") {
     if (!opts.plan || !opts.reports)
       throw new Error("--plan and --reports are required");
-    const plan = await json(opts.plan),
-      report = aggregate(plan, await collectReports(opts.reports));
+    const plan = await json(opts.plan);
+    assertPlan(plan);
+    const report = aggregate(plan, await collectReports(opts.reports));
     try {
-      assertUnchanged(plan.release, await getRelease(plan.release.tag_name));
-      assertUnchanged(plan.baseline, await getRelease(plan.baseline.tag_name));
+      await recheckRelease(plan.release);
+      await recheckRelease(plan.baseline);
     } catch (error) {
       report.status = "failed";
       report.fullCoverage = false;

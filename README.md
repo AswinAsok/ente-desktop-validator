@@ -4,7 +4,7 @@ An independent Node.js CLI and GitHub Actions project that tests **the installed
 
 The standalone project is available at [AswinAsok/ente-desktop-validator](https://github.com/AswinAsok/ente-desktop-validator). Native verification evidence and remaining coverage gaps are recorded in [docs/verification.md](docs/verification.md).
 
-The first compatibility profile targets **v1.7.28**, pinned to Ente source commit `bfa1572cb7f400fb28209f40f34b3c8debb73ed3`. New versions need a reviewed profile before they can receive full validation.
+Reviewed profiles cover stable **v1.7.28** and nightly **photos-desktop-v1.7.29-beta**. Nightly reuse requires matching source contracts; a version label alone never grants compatibility. Unsupported targets stop during preparation with an explanatory report, before native jobs start. v1.7.27 remains supported only as an upgrade baseline.
 
 ## Quick start
 
@@ -23,7 +23,16 @@ node src/cli.js matrix --release v1.7.28
 node src/cli.js dispatch --host YOUR-OWNER/ente-desktop-validator --release v1.7.28 --watch
 ```
 
-For a targeted remote rerun, add `--scenario linux-x64-deb-fresh,linux-x64-deb-upgrade`. The manual workflow exposes the same `scenarios` input. Omitted scenarios remain missing in the 32-scenario aggregate, so a targeted run cannot grant full release coverage.
+For the nightly release (the pasted fragment URL also works):
+
+```sh
+node src/cli.js dispatch --host YOUR-OWNER/ente-desktop-validator \
+  --release 'https://github.com/ente/nightly/releases#release-photos-desktop-v1.7.29-beta' --watch
+```
+
+The default upgrade is v1.7.28 → 1.7.29-beta. Preparation records the actual source commit and successful publication evidence. A partially published nightly, moving source tag, changed asset, unavailable build log, or unknown source contract cannot pass. No scheduled workflow is added.
+
+For a targeted remote rerun, add `--scenario linux-x64-deb-fresh,linux-x64-deb-upgrade`. The manual workflow exposes the same `scenarios` input. Omitted scenarios remain missing in the channel-specific aggregate, so a targeted run cannot grant full release coverage.
 
 An inventory success only confirms package coverage. It is **not** an installation or runtime result.
 
@@ -39,7 +48,7 @@ The result is explicitly marked `static-inspection`, with `runtimeTested: false`
 ## Standalone GitHub setup
 
 1. Push this repository to your own GitHub repository and enable Actions. Keep it separate from `ente/ente` and `ente/photos-desktop`.
-2. Use **Validate Ente desktop release → Run workflow**, or the CLI command above. `release` accepts a tag or an Ente release URL. An empty `baseline` selects the numerically preceding stable version.
+2. Use **Validate Ente desktop release → Run workflow**, or the CLI command above. `release` accepts a tag or an Ente release URL. An empty `baseline` selects the numerically preceding stable version, including for nightlies. An explicit baseline accepts either repository’s release URL.
 3. Public release assets require no additional secret. To read drafts, set **`ENTE_RELEASE_READ_TOKEN`** to a credential with read access to `ente/photos-desktop`.
 4. For Fedora and Arch coverage, provision disposable runners as described in [docs/runners.md](docs/runners.md). Set **`RUNNER_DISCOVERY_TOKEN`** with permission to list runners in the standalone repository. This token is used only by the preparation job.
 
@@ -55,7 +64,7 @@ Each native scenario gets its own fresh hosted VM or single-job dedicated VM. Th
 | macOS   | Universal DMG and ZIP            | Both on Intel and Apple Silicon                               |
 | Linux   | DEB, RPM, Pacman, AppImage       | Each on x64 and ARM64                                         |
 
-These are 13 packages, 16 package/architecture combinations, and **32 fresh-install/upgrade scenarios**. Windows uses the default per-user installation under `%LOCALAPPDATA%\Programs\ente`, not an assumed Program Files location. Linux packages use native package managers; AppImages use their actual FUSE runtime. macOS bundles are copied into `/Applications`.
+Stable releases require 13 packages, 16 package/architecture combinations, and **32 fresh-install/upgrade scenarios**. The reviewed nightly publishing workflow intentionally omits macOS ZIP: nightly coverage is **12 packages, 14 combinations, and 28 scenarios**. Eight Fedora/Arch scenarios remain blocked until dedicated runners are provisioned. Windows uses the default per-user installation under `%LOCALAPPDATA%\Programs\ente`, not an assumed Program Files location. Linux packages use native package managers; AppImages use their actual FUSE runtime. macOS bundles are copied into `/Applications`.
 
 Checks include:
 
@@ -107,7 +116,7 @@ Always discard the VM after a scenario, including a failed or interrupted one. A
 | `blocked`     | A prerequisite, runner, credential, or report was unavailable          |
 | `unsupported` | No reviewed compatibility profile or usable external runtime interface |
 
-Scenario commands exit nonzero unless every required check passes. Aggregation requires all 32 reports with matching release fingerprints, baseline, scenario, and validator revision. It rejects missing checks, duplicate reports, contradictions, stale hashes, and unknown statuses. A single passing scenario or static inspection is never a full release approval.
+Scenario commands exit nonzero unless every required check passes. Aggregation requires all 32 stable or 28 nightly reports with matching release fingerprints, baseline, scenario, and validator revision. It rejects missing checks, duplicate reports, contradictions, stale hashes, and unknown statuses. A single passing scenario or static inspection is never a full release approval.
 
 ```sh
 node src/cli.js prepare --release v1.7.28 --out reports/plan
@@ -130,3 +139,5 @@ The validator does not claim exhaustive OS-version, GPU, account-migration, or u
 `npm test` exercises package coverage, missing-executable/native-resource failures, download and model corruption, worker failure propagation, inference result validation, profile matching, stale-result rejection, and incomplete-report aggregation. `npm run check` checks JavaScript syntax and workflow YAML. These checks do not substitute for the 32 native runs.
 
 Read-only inspection of the downloaded v1.7.28 macOS ZIP can validate its installed-file contract without claiming an actual install or ML run. See [docs/verification.md](docs/verification.md) for the evidence collected during implementation.
+
+Plans and reports use schema **v2** with repository, channel, application version, source/profile identity and expected scenario count. Regenerate saved v1 plans; historical v1 reports remain readable as files but cannot be mixed into a v2 run.

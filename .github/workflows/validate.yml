@@ -5,11 +5,11 @@ on:
   workflow_dispatch:
     inputs:
       release:
-        description: Ente Photos desktop release URL or tag
+        description: Ente stable or nightly release URL or tag
         required: true
         default: v1.7.28
       baseline:
-        description: Previous stable tag (empty selects preceding stable)
+        description: Stable or nightly baseline URL/tag (empty selects preceding stable)
         required: false
       request_id:
         description: Optional CLI correlation ID
@@ -44,9 +44,11 @@ jobs:
           GH_TOKEN: ${{ secrets.ENTE_RELEASE_READ_TOKEN || github.token }}
           RUNNER_ADMIN_TOKEN: ${{ secrets.RUNNER_DISCOVERY_TOKEN }}
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
         with:
           name: validation-plan
-          path: reports/plan/plan.json
+          path: reports/plan
+          if-no-files-found: warn
 
   validate:
     needs: prepare

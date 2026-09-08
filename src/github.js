@@ -5,11 +5,15 @@ import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { createHash } from "node:crypto";
 import { hashFile, inside, blocked, sleep } from "./common.js";
-import { REPOSITORY, releaseRef, versionOf } from "./matrix.js";
+import { REPOSITORY, releaseDescriptor, versionOf } from "./matrix.js";
 
 export async function api(
   endpoint,
-  { token = process.env.GH_TOKEN ?? process.env.GITHUB_TOKEN, ...options } = {},
+  {
+    token = process.env.GH_TOKEN ?? process.env.GITHUB_TOKEN,
+    responseType,
+    ...options
+  } = {},
 ) {
   let res;
   for (let attempt = 0; attempt < 3; attempt++) {
@@ -37,12 +41,21 @@ export async function api(
     }
   }
   if (!res.ok) throw blocked(`GitHub ${endpoint}: HTTP ${res.status}`);
-  return res.status === 204 ? undefined : res.json();
+  return res.status === 204
+    ? undefined
+    : responseType === "text"
+      ? res.text()
+      : res.json();
 }
-export const getRelease = (tag) =>
-  api(
-    `repos/${REPOSITORY}/releases/tags/${encodeURIComponent(releaseRef(tag))}`,
+export async function getRelease(input) {
+  const ref = releaseDescriptor(input);
+  const release = await api(
+    `repos/${ref.repository}/releases/tags/${encodeURIComponent(ref.tag)}`,
   );
+  if (release.tag_name !== ref.tag)
+    throw new Error("GitHub returned a different release tag");
+  return { ...release, ...ref };
+}
 
 export async function baselineRelease(tag) {
   const target = versionOf(tag).split("-")[0].split(".").map(Number);
@@ -75,13 +88,14 @@ export async function baselineRelease(tag) {
   });
   if (!candidates[0])
     throw blocked("No preceding stable release; supply --baseline");
-  return candidates[0];
+  return { ...candidates[0], ...releaseDescriptor(candidates[0]) };
 }
 
 export function identity(release) {
   return {
+    ...releaseDescriptor(release),
     id: release.id,
-    tag: release.tag_name,
+    source: release.source ?? null,
     assets: release.assets
       .map((a) => ({
         id: a.id,
@@ -148,14 +162,14 @@ export async function download(url, target, { sha256, size, token } = {}) {
     await fs.rm(temporary, { force: true });
   }
 }
-export async function downloadAsset(asset, directory) {
+export async function downloadAsset(asset, directory, release) {
   await fs.mkdir(directory, { recursive: true });
   if (!asset || !/^sha256:[a-f0-9]{64}$/.test(asset.digest ?? ""))
     throw blocked("Release asset has no GitHub SHA-256 digest");
   if (asset.name !== asset.name.replaceAll("/", "").replaceAll("\\", ""))
     throw new Error("Unsafe asset name");
   return download(
-    `https://api.github.com/repos/${REPOSITORY}/releases/assets/${asset.id}`,
+    `https://api.github.com/repos/${releaseDescriptor(release).repository}/releases/assets/${asset.id}`,
     inside(directory, asset.name),
     {
       sha256: asset.digest.slice(7),

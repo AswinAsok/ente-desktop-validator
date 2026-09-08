@@ -42,9 +42,20 @@ const release = (tag = "v1.7.28") => ({
     }),
   ),
 });
+import { profileIdentity } from "../src/compatibility.js";
+const profile = JSON.parse(
+  await fs.readFile(
+    new URL("../profiles/1.7.28.json", import.meta.url),
+    "utf8",
+  ),
+);
 const plan = () => {
   const r = release();
   return {
+    schemaVersion: 2,
+    profile,
+    compatibilityProfile: profileIdentity(profile),
+    expectedScenarios: 32,
     release: r,
     baseline: release("v1.7.27"),
     releaseFingerprint: fingerprint(r),
@@ -53,8 +64,10 @@ const plan = () => {
   };
 };
 const passing = (plan, s) => ({
-  schemaVersion: 1,
+  schemaVersion: 2,
   kind: "scenario",
+  compatibilityProfile: plan.compatibilityProfile,
+  expectedScenarios: plan.expectedScenarios,
   scenario: s,
   release: identity(plan.release),
   releaseFingerprint: plan.releaseFingerprint,

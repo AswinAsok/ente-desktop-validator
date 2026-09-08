@@ -1,14 +1,13 @@
 import path from "node:path";
 import fs from "node:fs/promises";
 import { randomUUID } from "node:crypto";
-import { matrix, inventory, versionOf } from "./matrix.js";
+import { matrix, inventory, versionOf, releaseDescriptor } from "./matrix.js";
 import {
   getRelease,
   baselineRelease,
   downloadAsset,
   download,
   fingerprint,
-  assertUnchanged,
 } from "./github.js";
 import {
   command,
@@ -18,7 +17,7 @@ import {
   exists,
   validatorRevision,
 } from "./common.js";
-import { newReport, check, saveReport } from "./report.js";
+import { newReport, check, saveReport, markdown } from "./report.js";
 import {
   loadProfile,
   inspectInstalled,
@@ -37,22 +36,41 @@ import {
   copyApplicationLogs,
 } from "./runtime.js";
 
+import {
+  captureSource,
+  reviewedProfile,
+  profileIdentity,
+  recheckRelease,
+} from "./compatibility.js";
+
 export async function preparePlan(tag, baselineTag) {
   const release = await getRelease(tag);
+  inventory(release);
+  // Resolve known compatibility before fetching a baseline or starting native jobs.
+  if (release.channel === "stable") {
+    await loadProfile(release);
+  }
+  release.source = await captureSource(release);
+  const profile = await reviewedProfile(release);
   const baseline = baselineTag
     ? await getRelease(baselineTag)
     : await baselineRelease(tag);
-  if (baseline.id === release.id)
+  inventory(baseline);
+  baseline.source = await captureSource(baseline);
+  if (baseline.repository === release.repository && baseline.id === release.id)
     throw new Error("Upgrade baseline must differ from the candidate");
   const revision = await validatorRevision();
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
+    compatibilityProfile: profileIdentity(profile),
+    profile,
+    expectedScenarios: matrix(release).length,
     createdAt: new Date().toISOString(),
     release,
     releaseFingerprint: fingerprint(release),
     baseline,
     validatorRevision: revision,
-    scenarios: matrix(tag),
+    scenarios: matrix(release),
   };
 }
 
@@ -114,6 +132,7 @@ export async function runScenario(
   directory,
   { disposable = false, unavailable } = {},
 ) {
+  assertPlan(plan);
   const scenario = plan.scenarios.find((s) => s.id === id);
   if (!scenario) throw new Error(`Unknown scenario ${id}`);
   directory = path.resolve(directory);
@@ -127,7 +146,8 @@ export async function runScenario(
   await fs.mkdir(work, { recursive: true });
   await fs.mkdir(artifacts, { recursive: true });
   const report = await newReport(scenario, plan.release, plan.baseline);
-  report.compatibilityProfile = null;
+  report.compatibilityProfile = plan.compatibilityProfile;
+  report.expectedScenarios = plan.expectedScenarios;
   const policy = new NetworkPolicy(path.join(directory, "network"));
   let app, session, snapshot;
   class Stop extends Error {}
@@ -145,27 +165,27 @@ export async function runScenario(
     });
     await requireCheck("release-inventory", () => inventory(plan.release));
     const profile = await requireCheck("compatibility", () =>
-      loadProfile(plan.release.tag_name),
+      Promise.resolve(plan.profile),
     );
-    report.compatibilityProfile = {
-      version: profile.version,
-      source: profile.source,
-      runtimeAdapter: profile.runtimeAdapter,
-    };
+
     const profileDirectory = defaultProfileDirectory();
     const files = await requireCheck("download", async () => {
       const candidate = await downloadAsset(
         plan.release.assets.find((a) => a.name === scenario.asset),
         path.join(work, "candidate"),
+        plan.release,
       );
       let baseline;
       if (scenario.mode === "upgrade") {
-        const baseScenario = matrix(plan.baseline.tag_name).find(
-          (s) => s.id === id,
-        );
+        const baseScenario = matrix(plan.baseline).find((s) => s.id === id);
+        if (!baseScenario)
+          throw blocked(
+            `Baseline ${plan.baseline.tag_name} has no ${scenario.key} package`,
+          );
         baseline = await downloadAsset(
           plan.baseline.assets.find((a) => a.name === baseScenario.asset),
           path.join(work, "baseline"),
+          plan.baseline,
         );
       }
       const fixtures = path.join(work, "fixtures");
@@ -361,15 +381,55 @@ export async function runScenario(
         ),
       );
     await check(report, "release-unchanged", async () => {
-      assertUnchanged(plan.release, await getRelease(plan.release.tag_name));
-      if (scenario.mode === "upgrade")
-        assertUnchanged(
-          plan.baseline,
-          await getRelease(plan.baseline.tag_name),
-        );
+      await recheckRelease(plan.release);
+      if (scenario.mode === "upgrade") await recheckRelease(plan.baseline);
       return { unchanged: true };
     });
     await saveReport(report, directory);
   }
   return report;
+}
+
+export function assertPlan(plan) {
+  if (plan.schemaVersion !== 2)
+    throw new Error(
+      "Incompatible saved plan; regenerate it with the current validator prepare command (schema v2)",
+    );
+  if (
+    !plan.profile ||
+    JSON.stringify(profileIdentity(plan.profile)) !==
+      JSON.stringify(plan.compatibilityProfile) ||
+    plan.releaseFingerprint !== fingerprint(plan.release) ||
+    plan.expectedScenarios !== matrix(plan.release).length
+  )
+    throw new Error(
+      "Saved plan compatibility or release identity is invalid; regenerate the plan",
+    );
+}
+
+export async function prepareReport(tag, baselineTag, directory) {
+  try {
+    return await preparePlan(tag, baselineTag);
+  } catch (error) {
+    const report = {
+      schemaVersion: 2,
+      kind: "preparation",
+      release: releaseDescriptor(tag),
+      status: error.status ?? "failed",
+      startedAt: new Date().toISOString(),
+      checks: [
+        {
+          id: "preparation",
+          status: error.status ?? "failed",
+          error: error.message,
+        },
+      ],
+      runtimeTested: false,
+    };
+    await saveReport(report, directory);
+    console.error(markdown(report));
+    if (process.env.GITHUB_STEP_SUMMARY)
+      await fs.appendFile(process.env.GITHUB_STEP_SUMMARY, markdown(report));
+    throw error;
+  }
 }
