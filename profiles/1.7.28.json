@@ -12,6 +12,7 @@
     ]
   },
   "runtimeAdapter": "comlink-ml-v1",
+  "ffmpegArchitectures": { "win32-arm64": ["x64"] },
   "modelHosts": ["models.ente.com"],
   "models": [
     {

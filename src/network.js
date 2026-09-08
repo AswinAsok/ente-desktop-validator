@@ -65,6 +65,16 @@ export class NetworkPolicy {
         throw new Error("Could not resolve model CDN addresses");
       const state = { platform: process.platform, hosts, ips };
       if (process.platform === "win32") {
+        state.controlPrograms =
+          process.env.GITHUB_ACTIONS === "true"
+            ? JSON.parse(
+                (
+                  await powershell(
+                    "ConvertTo-Json -InputObject @(Get-Process | Where-Object { $_.ProcessName -in @('Runner.Listener','Runner.Worker','Runner.PluginHost') } | Select-Object -ExpandProperty Path -Unique)",
+                  )
+                ).stdout,
+              )
+            : [];
         state.backup = path.join(this.directory, "firewall.wfw");
         // netsh export refuses to replace the backup from an earlier restored phase.
         await fs.rm(state.backup, { force: true });
@@ -103,6 +113,7 @@ export class NetworkPolicy {
 Set-NetFirewallProfile -Profile Domain,Public,Private -Enabled True -DefaultOutboundAction Block
 Get-NetFirewallRule -Group 'EnteValidator' -ErrorAction SilentlyContinue | Remove-NetFirewallRule
 New-NetFirewallRule -DisplayName 'Ente validator loopback' -Group 'EnteValidator' -Direction Outbound -Action Allow -RemoteAddress '127.0.0.1' | Out-Null
+${(state.controlPrograms ?? []).map((file) => `New-NetFirewallRule -DisplayName 'Ente validator Actions control' -Group 'EnteValidator' -Direction Outbound -Action Allow -Protocol TCP -RemotePort 443 -Program ${psQuote(file)} | Out-Null`).join("\n")}
 ${ips.length ? `New-NetFirewallRule -DisplayName 'Ente validator models' -Group 'EnteValidator' -Direction Outbound -Action Allow -Protocol TCP -RemotePort 443 -RemoteAddress @(${ips.map(psQuote).join(",")}) | Out-Null` : ""}
 ${mode === "online" ? "foreach ($p in @('TCP','UDP')) { New-NetFirewallRule -DisplayName ('Ente validator DNS '+$p) -Group 'EnteValidator' -Direction Outbound -Action Allow -Protocol $p -RemotePort 53 | Out-Null }" : ""}`);
     }
@@ -164,6 +175,7 @@ ${mode === "online" ? "foreach ($p in @('TCP','UDP')) { New-NetFirewallRule -Dis
       modelsReachable,
       unrelatedReachable,
       enforcement: "operating-system",
+      controlPlaneExceptions: state.controlPrograms ?? [],
     };
   }
   async restore() {

@@ -2,6 +2,8 @@
 
 An independent Node.js CLI and GitHub Actions project that tests **the installed release binaries**, including their native ML workers. It does not change Ente's source, installers, repositories, or workflows, and cannot promote a release.
 
+The standalone project is available at [AswinAsok/ente-desktop-validator](https://github.com/AswinAsok/ente-desktop-validator). Native verification evidence and remaining coverage gaps are recorded in [docs/verification.md](docs/verification.md).
+
 The first compatibility profile targets **v1.7.28**, pinned to Ente source commit `bfa1572cb7f400fb28209f40f34b3c8debb73ed3`. New versions need a reviewed profile before they can receive full validation.
 
 ## Quick start
@@ -20,6 +22,8 @@ node src/cli.js matrix --release v1.7.28
 # Run all 32 scenarios in YOUR separate GitHub repository.
 node src/cli.js dispatch --host YOUR-OWNER/ente-desktop-validator --release v1.7.28 --watch
 ```
+
+For a targeted remote rerun, add `--scenario linux-x64-deb-fresh,linux-x64-deb-upgrade`. The manual workflow exposes the same `scenarios` input. Omitted scenarios remain missing in the 32-scenario aggregate, so a targeted run cannot grant full release coverage.
 
 An inventory success only confirms package coverage. It is **not** an installation or runtime result.
 
@@ -82,7 +86,7 @@ xvfb-run -a node src/cli.js run --release v1.7.28 --baseline v1.7.27 \
 
 Every scenario needs a new report directory. Upgrades install the baseline, launch it, seed `themeMode: dark` and a marker in the default test profile, install the candidate, and check that both survived. They test installer replacement, not the automatic updater's handoff or account migration.
 
-The controller first downloads installers/fixtures and caches package-manager dependencies. It then applies OS egress rules: online tests allow the resolved model CDN IPs on HTTPS plus DNS and loopback; offline tests allow only loopback. Native `curl` probes verify enforcement. GitHub connectivity resumes when the firewall is restored, so live job logs may pause during inference.
+The controller first downloads installers/fixtures and caches package-manager dependencies. It then applies OS egress rules: online tests allow the resolved model CDN IPs on HTTPS plus DNS and loopback; offline tests allow only loopback. Native `curl` probes verify enforcement. On hosted Windows, only the running GitHub Actions control executables retain HTTPS access so isolation does not cancel the job; their paths are reported. Ente, its native workers, and the probe process receive no such exception. GitHub connectivity resumes when the firewall is restored, so live job logs may pause during inference.
 
 Firewall state is restored in `finally` and again in an unconditional workflow step. For an interrupted local run:
 
@@ -94,7 +98,7 @@ Always discard the VM after a scenario, including a failed or interrupted one. A
 
 ## Reports and exit status
 
-`report.json` and `summary.md` are written for each scenario. `artifacts/` contains installer logs, screenshots, inference outputs, and the installed-file inventory. `progress.json` records completed checks if the process is interrupted.
+`report.json` and `summary.md` are written for each scenario. `artifacts/` contains installer and application logs, screenshots, inference outputs, and the installed-file inventory. `network/probes-*.json` records native firewall connectivity probes. `progress.json` records completed checks if the process is interrupted.
 
 | Status        | Meaning                                                                |
 | ------------- | ---------------------------------------------------------------------- |

@@ -167,7 +167,9 @@ export async function inspectInstalled(root, scenario, profile, version) {
       throw new Error(
         `Unexpected installed package ${metadata.name}@${metadata.version}`,
       );
-    const files = listPackage(app.asar).map((file) => file.replaceAll("\\", "/"));
+    const files = listPackage(app.asar).map((file) =>
+      file.replaceAll("\\", "/"),
+    );
     if (
       !files.some(
         (p) => p.startsWith("/out/_next/static/") && p.endsWith(".js"),
@@ -204,7 +206,8 @@ export async function inspectInstalled(root, scenario, profile, version) {
       "app.asar.unpacked/node_modules/ffmpeg-static",
       scenario.platform === "win32" ? "ffmpeg.exe" : "ffmpeg",
     ),
-    arches,
+    profile.ffmpegArchitectures?.[`${scenario.platform}-${scenario.arch}`] ??
+      arches,
   );
   if (scenario.platform !== "darwin") {
     await required(

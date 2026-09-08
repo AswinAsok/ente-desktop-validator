@@ -52,6 +52,6 @@ The preparation job uses `RUNNER_DISCOVERY_TOKEN` to verify that matching runner
 - Linux needs `sudo nft`, a usable X server, and permission to run Chromium's normal sandbox. AppImage jobs require functional FUSE.
 - macOS needs a GUI login session and stock `/etc/pf.conf` on a disposable host. The validator temporarily replaces PF rules and restores that stock configuration and the prior enabled state. Do not use a host with unrelated dynamic PF state.
 - Windows needs an administrator desktop session and permission to export/import Defender Firewall policy. The harness temporarily disables existing outbound allow rules and allows only the specified test traffic. Normal user/UAC installation behavior is not covered by an administrator-hosted test.
-- The runner and application share machine-wide egress restrictions. GitHub logging disconnects temporarily; results are uploaded after restoration.
+- Linux/macOS runners share machine-wide egress restrictions and logging can pause temporarily. Hosted Windows keeps explicit HTTPS rules for the running `Runner.Listener`, `Runner.Worker`, and `Runner.PluginHost` executables because losing their control connection can cancel jobs. No exception is granted to Ente or its utility processes. The report records these control-program paths. Artifact upload happens after restoration.
 
 No cloud account, VM subscription, or hardware fleet is provisioned by this repository. Those machine resources must be supplied before native coverage can complete.

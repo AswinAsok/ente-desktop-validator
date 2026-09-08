@@ -298,7 +298,10 @@ test("installer exit success cannot hide a missing executable or native resource
   ];
   for (const file of files) {
     await fs.mkdir(path.dirname(path.join(root, file)), { recursive: true });
-    await fs.writeFile(path.join(root, file), pe);
+    const binary = Buffer.from(pe);
+    if (file.endsWith("ffmpeg-static/ffmpeg.exe"))
+      binary.writeUInt16LE(0x8664, 132);
+    await fs.writeFile(path.join(root, file), binary);
   }
   await inspectInstalled(root, scenario, profile, "v1.7.28");
   await fs.rm(path.join(root, "ente.exe"));

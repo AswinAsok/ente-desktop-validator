@@ -38,3 +38,7 @@ Playwright's experimental Electron API needs a usable inspection interface. Laun
 5. Run the validator's regression tests and the full native matrix against a known-good candidate. Record any platform limitations.
 
 The profile's version match prevents a newer release from receiving a misleading pass using stale expectations. Future Ente-owned diagnostics could replace the external adapter while preserving the scenario/report contracts.
+
+## Windows ARM64 helper architecture
+
+The 1.7.28 profile expects the separately executed FFmpeg helper to be x64 on Windows ARM64. The shipped file is x64, [ffmpeg-static publishes Windows x86/x64 binaries](https://github.com/eugeneware/ffmpeg-static), and [Windows 11 supports x64 application emulation](https://learn.microsoft.com/en-us/windows/arm/apps-on-arm-x86-emulation). The helper must still execute successfully in `media-tools`; presence alone cannot pass it. The Ente executable, native addon, ONNX Runtime, and VIPS still require native ARM64. Linux ARM64 has no such exception.
