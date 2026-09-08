@@ -166,7 +166,9 @@ export async function install(scenario, assetPath, work, logs) {
     };
   } else {
     const commands = {
-      deb: ["apt-get", ["install", "--no-download", "-y", assetPath]],
+      // APT must acquire the local file URI even when dependencies are cached.
+      // --no-download suppresses that too; OS rules already deny repository egress.
+      deb: ["apt-get", ["install", "-y", assetPath]],
       rpm: ["dnf", ["--cacheonly", "install", "-y", assetPath]],
       pacman: ["pacman", ["-U", "--noconfirm", assetPath]],
     };

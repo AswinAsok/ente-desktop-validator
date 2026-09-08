@@ -28,7 +28,7 @@ const help = `Ente desktop validator (Node 24+)
   run --plan <plan.json> --scenario <id> --disposable [--unavailable <reason>] [--out <dir>]
   inspect --release <tag> --combination <platform-arch-format> --root <installed-root> [--out <dir>]
   aggregate --plan <plan.json> --reports <directory> [--out <dir>]
-  dispatch --host <owner/repo> --release <URL|tag> [--baseline <tag>] [--watch]
+  dispatch --host <owner/repo> --release <URL|tag> [--baseline <tag>] [--scenario <id,id,...>] [--watch]
   watch --host <owner/repo> --run-id <id>
   network-restore --out <scenario-directory>
 
@@ -192,6 +192,7 @@ async function runCLI(argv) {
       ];
       if (opts.baseline)
         args.push("-f", `baseline=${releaseRef(opts.baseline)}`);
+      if (opts.scenario) args.push("-f", `scenarios=${opts.scenario}`);
       await command("gh", args);
       for (let n = 0; n < 24 && !id; n++) {
         await sleep(2500);

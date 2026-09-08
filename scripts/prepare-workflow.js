@@ -11,6 +11,16 @@ const plan = await preparePlan(
   process.env.RELEASE,
   process.env.BASELINE || undefined,
 );
+const selected = process.env.SCENARIOS?.split(",")
+  .map((id) => id.trim())
+  .filter(Boolean);
+if (selected?.some((id) => !plan.scenarios.some((s) => s.id === id)))
+  throw new Error(
+    "Unknown selected scenario; use the CLI matrix command to list IDs",
+  );
+plan.selectedScenarios = selected?.length
+  ? [...new Set(selected)]
+  : plan.scenarios.map((s) => s.id);
 await writeJSON("reports/plan/plan.json", plan);
 let runners, runnerError;
 if (process.env.RUNNER_ADMIN_TOKEN) {
@@ -28,31 +38,35 @@ if (process.env.RUNNER_ADMIN_TOKEN) {
     runnerError = error.message;
   }
 }
-const include = plan.scenarios.map((s) => {
-  let reason = "";
-  if (s.runner.includes("self-hosted")) {
-    if (!runners)
-      reason =
-        runnerError ??
-        "No runner-discovery credential configured; dedicated runner availability is unknown";
-    else if (
-      !runners.some(
-        (r) =>
-          r.status === "online" &&
-          s.runner.every((label) =>
-            r.labels.some((l) => l.name.toLowerCase() === label.toLowerCase()),
-          ),
+const include = plan.scenarios
+  .filter((s) => plan.selectedScenarios.includes(s.id))
+  .map((s) => {
+    let reason = "";
+    if (s.runner.includes("self-hosted")) {
+      if (!runners)
+        reason =
+          runnerError ??
+          "No runner-discovery credential configured; dedicated runner availability is unknown";
+      else if (
+        !runners.some(
+          (r) =>
+            r.status === "online" &&
+            s.runner.every((label) =>
+              r.labels.some(
+                (l) => l.name.toLowerCase() === label.toLowerCase(),
+              ),
+            ),
+        )
       )
-    )
-      reason =
-        "No online disposable runner matches this package and architecture";
-  }
-  return {
-    id: s.id,
-    runner: reason ? ["ubuntu-24.04"] : s.runner,
-    unavailable: reason,
-  };
-});
+        reason =
+          "No online disposable runner matches this package and architecture";
+    }
+    return {
+      id: s.id,
+      runner: reason ? ["ubuntu-24.04"] : s.runner,
+      unavailable: reason,
+    };
+  });
 await fs.appendFile(
   process.env.GITHUB_OUTPUT,
   `matrix=${JSON.stringify({ include })}\n`,

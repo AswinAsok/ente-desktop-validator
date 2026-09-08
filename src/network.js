@@ -110,6 +110,7 @@ ${mode === "online" ? "foreach ($p in @('TCP','UDP')) { New-NetFirewallRule -Dis
     const state = await json(this.stateFile);
     const ip = state.ips.find((ip) => isIP(ip) === 4) ?? state.ips[0];
     const curl = process.platform === "win32" ? "curl.exe" : "curl";
+    const probes = [];
     const canReach = async (args) =>
       command(
         curl,
@@ -123,12 +124,26 @@ ${mode === "online" ? "foreach ($p in @('TCP','UDP')) { New-NetFirewallRule -Dis
           "5",
           "--max-time",
           "8",
+          // Schannel's CRL endpoints are deliberately outside the model allowlist.
+          // Keep certificate verification, tolerate only unavailable CRL servers.
+          ...(process.platform === "win32" ? ["--ssl-revoke-best-effort"] : []),
           ...args,
         ],
         { timeout: 10_000 },
       ).then(
-        () => true,
-        () => false,
+        (result) => {
+          probes.push({ args, ...result, reachable: true });
+          return true;
+        },
+        (error) => {
+          probes.push({
+            args,
+            ...error.result,
+            error: error.message,
+            reachable: false,
+          });
+          return false;
+        },
       );
     // Literal addresses prevent DNS failure alone from masquerading as isolation.
     const modelsReachable = await canReach([
@@ -137,6 +152,7 @@ ${mode === "online" ? "foreach ($p in @('TCP','UDP')) { New-NetFirewallRule -Dis
       `https://${state.hosts[0]}/`,
     ]);
     const unrelatedReachable = await canReach(["https://1.1.1.1/"]);
+    await writeJSON(path.join(this.directory, `probes-${mode}.json`), probes);
     if (unrelatedReachable || modelsReachable !== (mode === "online"))
       throw new Error(
         `OS egress policy failed: mode=${mode}, modelCDN=${modelsReachable}, unrelated=${unrelatedReachable}`,

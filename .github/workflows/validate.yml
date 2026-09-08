@@ -14,6 +14,9 @@ on:
       request_id:
         description: Optional CLI correlation ID
         required: false
+      scenarios:
+        description: Optional comma-separated scenario IDs for debugging (cannot grant full coverage)
+        required: false
 
 permissions:
   contents: read
@@ -37,6 +40,7 @@ jobs:
         env:
           RELEASE: ${{ inputs.release }}
           BASELINE: ${{ inputs.baseline }}
+          SCENARIOS: ${{ inputs.scenarios }}
           GH_TOKEN: ${{ secrets.ENTE_RELEASE_READ_TOKEN || github.token }}
           RUNNER_ADMIN_TOKEN: ${{ secrets.RUNNER_DISCOVERY_TOKEN }}
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -94,6 +98,7 @@ jobs:
             reports/scenarios/${{ matrix.id }}/progress.json
             reports/scenarios/${{ matrix.id }}/summary.md
             reports/scenarios/${{ matrix.id }}/artifacts
+            reports/scenarios/${{ matrix.id }}/network/probes-*.json
           if-no-files-found: warn
           retention-days: 14
 
