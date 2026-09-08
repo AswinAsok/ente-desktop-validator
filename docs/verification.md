@@ -77,3 +77,26 @@ A **healthy release passing all 32 scenarios has not been demonstrated**. v1.7.2
 Missing executable/native resource, blocked download, corrupted model, worker crash, and invalid inference regressions are exercised with synthetic fixtures in the unit suite. These tests validate failure detection and propagation; they are not claims of six destructive fault-injection runs against the real installed Ente application. The synthetic all-32-pass case tests aggregation only.
 
 Different validator revisions are not merged into a fabricated passing aggregate. A complete release assessment requires a new full-matrix run with one revision and all required runners. Native artifacts remain downloadable from the linked Actions runs for their configured retention period.
+
+## Nightly support: v1.7.29-beta
+
+The [completed nightly run](https://github.com/AswinAsok/ente-desktop-validator/actions/runs/34255409857) tested validator revision `4d497b8`, source commit `2ffa837dab0540fd46c8863714ef944498e3b1d5`, and stable upgrade baseline v1.7.28. It completed all 20 hosted scenarios and recorded the eight unavailable dedicated-runner scenarios. The aggregate is **failed: 12 passed, 7 failed, 9 blocked**, with `fullCoverage: false`. Candidate and baseline asset/source identity rechecks passed.
+
+| Outcome | Evidence |
+| --- | --- |
+| 12 passed | All four Windows fresh cases; both Windows x64 upgrades; all four macOS DMG cases; Linux x64 DEB fresh and upgrade |
+| 4 failed: candidate files | Linux ARM64 DEB and AppImage, fresh and upgrade, package x64 FFmpeg instead of ARM64 |
+| 2 failed: baseline | Windows ARM64 upgrade cases cannot launch v1.7.28 because its installed `ente.exe` is missing |
+| 1 failed: baseline runtime | Linux x64 AppImage upgrade encountered IndexedDB backing-store errors while launching v1.7.28 |
+| 1 blocked: instrumentation | Linux x64 AppImage fresh passed normal launch/files, but the external Electron launch lost its X display connection and timed out; ML is unsupported in that scenario |
+| 8 blocked: machines | Fedora/Arch runners are unavailable, as agreed |
+
+Every passing scenario includes production online inference, all 11 model sizes/SHA-256 hashes, restart plus offline inference, and installed-file/asset identity checks. Passing upgrades also preserve the seeded native preference and marker. The downloaded 28 scenario reports independently reproduce the hosted aggregate. AppImage display/IndexedDB errors are observed runtime or test-environment failures; they are not established package defects. An earlier fresh AppImage pass is retained only as diagnostic evidence, not substituted into this final run.
+
+The [initial nightly run](https://github.com/AswinAsok/ente-desktop-validator/actions/runs/34254860675), revision `6cb80ff`, reported 8 passed, 12 failed and 8 blocked. It exposed a validator fixture defect: `themeMode` was not a supported native preference in the baseline, and the nightly overwrote it with the renderer theme. Revision `4d497b8` uses the real `hideDockIcon: false` preference and verifies its stored value before and after upgrading. No application files or inference functions were modified.
+
+The [native stable upgrade regression](https://github.com/AswinAsok/ente-desktop-validator/actions/runs/34255485628) passed Linux x64 DEB v1.7.27 → v1.7.28 using the corrected fixture. Its aggregate is intentionally blocked because the other 31 stable scenarios were not selected.
+
+The [unsupported v1.7.27 target check](https://github.com/AswinAsok/ente-desktop-validator/actions/runs/34254909415) uploaded one explanatory preparation report and skipped all native jobs. The [cross-platform validator CI](https://github.com/AswinAsok/ente-desktop-validator/actions/runs/34255409105) passed on Windows, macOS and Linux: 30 portable tests plus the Windows-only cleanup check. JavaScript/workflow syntax and actionlint v1.7.12 also passed. Synthetic failure tests are isolated from the real Actions job summary.
+
+No healthy full nightly release approval is claimed. No Ente source, repository, packaged application or workflow was changed, and no scheduled workflow was added.
