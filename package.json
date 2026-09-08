@@ -1,0 +1,24 @@
+{
+  "name": "ente-desktop-validator",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Independent validation of installed Ente Photos release packages",
+  "engines": {
+    "node": ">=24"
+  },
+  "bin": {
+    "ente-validate": "src/cli.js"
+  },
+  "scripts": {
+    "test": "node --test",
+    "check": "node scripts/check.js",
+    "validate": "node src/cli.js"
+  },
+  "dependencies": {
+    "@electron/asar": "4.3.0",
+    "comlink": "4.4.2",
+    "playwright": "1.63.0",
+    "yaml": "2.9.0"
+  }
+}

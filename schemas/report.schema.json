@@ -1,0 +1,106 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Ente desktop validator report v1",
+  "type": "object",
+  "required": ["schemaVersion", "kind", "status", "release", "finishedAt"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "kind": { "enum": ["scenario", "aggregate", "static-inspection"] },
+    "status": { "$ref": "#/$defs/status" },
+    "release": {
+      "type": "object",
+      "required": ["tag"],
+      "properties": { "tag": { "type": "string" } }
+    },
+    "releaseFingerprint": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "validatorRevision": { "type": "string" },
+    "startedAt": { "type": "string" },
+    "finishedAt": { "type": "string" },
+    "checks": { "type": "array", "items": { "$ref": "#/$defs/check" } },
+    "scenario": {
+      "type": "object",
+      "required": ["id", "platform", "arch", "format", "mode", "asset"],
+      "properties": {
+        "id": { "type": "string" },
+        "platform": { "enum": ["darwin", "win32", "linux"] },
+        "arch": { "enum": ["x64", "arm64"] },
+        "format": {
+          "enum": [
+            "nsis",
+            "nsis-combined",
+            "dmg",
+            "zip",
+            "deb",
+            "rpm",
+            "pacman",
+            "AppImage"
+          ]
+        },
+        "mode": { "enum": ["fresh", "upgrade"] },
+        "asset": { "type": "string" }
+      }
+    },
+    "scenarios": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "status"],
+        "properties": {
+          "id": { "type": "string" },
+          "status": { "$ref": "#/$defs/status" },
+          "error": { "type": "string" }
+        }
+      }
+    },
+    "fullCoverage": { "type": "boolean" },
+    "runtimeTested": { "type": "boolean" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "kind": { "const": "scenario" } } },
+      "then": {
+        "required": [
+          "scenario",
+          "checks",
+          "releaseFingerprint",
+          "validatorRevision",
+          "baseline",
+          "host"
+        ]
+      }
+    },
+    {
+      "if": { "properties": { "kind": { "const": "aggregate" } } },
+      "then": {
+        "required": [
+          "scenarios",
+          "expectedScenarios",
+          "fullCoverage",
+          "releaseFingerprint",
+          "validatorRevision"
+        ]
+      }
+    },
+    {
+      "if": { "properties": { "kind": { "const": "static-inspection" } } },
+      "then": {
+        "required": ["checks", "runtimeTested"],
+        "properties": { "runtimeTested": { "const": false } }
+      }
+    }
+  ],
+  "$defs": {
+    "status": { "enum": ["passed", "failed", "blocked", "unsupported"] },
+    "check": {
+      "type": "object",
+      "required": ["id", "status"],
+      "properties": {
+        "id": { "type": "string" },
+        "status": { "$ref": "#/$defs/status" },
+        "durationMs": { "type": "number", "minimum": 0 },
+        "detail": {},
+        "error": { "type": "string" }
+      }
+    }
+  }
+}

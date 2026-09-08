@@ -1,0 +1,127 @@
+name: Validate Ente desktop release
+run-name: Ente ${{ inputs.release }} validation ${{ inputs.request_id }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      release:
+        description: Ente Photos desktop release URL or tag
+        required: true
+        default: v1.7.28
+      baseline:
+        description: Previous stable tag (empty selects preceding stable)
+        required: false
+      request_id:
+        description: Optional CLI correlation ID
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    if: github.repository_owner != 'ente' && github.repository_owner != 'ente-io'
+    runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm test && npm run check
+      - id: plan
+        run: node scripts/prepare-workflow.js
+        env:
+          RELEASE: ${{ inputs.release }}
+          BASELINE: ${{ inputs.baseline }}
+          GH_TOKEN: ${{ secrets.ENTE_RELEASE_READ_TOKEN || github.token }}
+          RUNNER_ADMIN_TOKEN: ${{ secrets.RUNNER_DISCOVERY_TOKEN }}
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: validation-plan
+          path: reports/plan/plan.json
+
+  validate:
+    needs: prepare
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix: ${{ fromJSON(needs.prepare.outputs.matrix) }}
+    env:
+      GH_TOKEN: ${{ secrets.ENTE_RELEASE_READ_TOKEN || github.token }}
+      SCENARIO: ${{ matrix.id }}
+      UNAVAILABLE: ${{ matrix.unavailable }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+          cache: npm
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: validation-plan
+          path: reports/plan
+      - run: npm ci --ignore-scripts
+      - name: Prepare hosted Ubuntu desktop dependencies
+        if: runner.os == 'Linux' && runner.environment == 'github-hosted' && matrix.unavailable == ''
+        run: sudo apt-get update && sudo apt-get install -y xvfb imagemagick nftables libfuse2t64 libnss3 libatk-bridge2.0-0 libgtk-3-0 libasound2t64 libgbm1
+      - name: Validate one disposable scenario
+        shell: bash
+        run: |
+          args=(node src/cli.js run --plan reports/plan/plan.json --scenario "$SCENARIO" --out "reports/scenarios/$SCENARIO" --disposable)
+          if [[ -n "$UNAVAILABLE" ]]; then
+            "${args[@]}" --unavailable "$UNAVAILABLE"
+          elif [[ "$RUNNER_OS" == Linux ]]; then
+            xvfb-run -a "${args[@]}"
+          else
+            "${args[@]}"
+          fi
+      - name: Restore OS firewall after failure or cancellation
+        if: always()
+        shell: bash
+        run: node src/cli.js network-restore --out "reports/scenarios/$SCENARIO"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: scenario-${{ matrix.id }}
+          path: |
+            reports/scenarios/${{ matrix.id }}/report.json
+            reports/scenarios/${{ matrix.id }}/progress.json
+            reports/scenarios/${{ matrix.id }}/summary.md
+            reports/scenarios/${{ matrix.id }}/artifacts
+          if-no-files-found: warn
+          retention-days: 14
+
+  report:
+    if: always() && needs.prepare.result == 'success'
+    needs: [prepare, validate]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+      - run: npm ci --ignore-scripts
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: validation-plan
+          path: reports/plan
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        continue-on-error: true
+        with:
+          pattern: scenario-*
+          path: reports/scenarios
+      - run: mkdir -p reports/scenarios
+      - run: node src/cli.js aggregate --plan reports/plan/plan.json --reports reports/scenarios --out reports/final
+        env:
+          GH_TOKEN: ${{ secrets.ENTE_RELEASE_READ_TOKEN || github.token }}
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: release-readiness-report
+          path: reports/final
