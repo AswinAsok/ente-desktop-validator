@@ -185,7 +185,7 @@ export async function install(scenario, assetPath, work, logs) {
 export async function stopApp(app) {
   if (process.platform === "win32") {
     await powershell(
-      `Get-Process -Name ente -ErrorAction SilentlyContinue | Where-Object { $_.Path -ieq ${psQuote(app.executable)} } | ForEach-Object { taskkill.exe /PID $_.Id /T /F | Out-Null }`,
+      `Get-Process | Where-Object { $_.ProcessName -eq 'ente' -and $_.Path -ieq ${psQuote(app.executable)} } | ForEach-Object { taskkill.exe /PID $_.Id /T /F | Out-Null }`,
     );
   } else {
     // Matches only the executable installed by this disposable scenario.

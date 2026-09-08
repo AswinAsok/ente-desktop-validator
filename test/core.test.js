@@ -24,6 +24,8 @@ import { validateInference, assertEmbedding, runML } from "../src/runtime.js";
 import { inside, deadline } from "../src/common.js";
 import { parse } from "yaml";
 import { linuxRules, macRules } from "../src/network.js";
+import { runCLI } from "../src/cli.js";
+import { stopApp } from "../src/install.js";
 
 const sha = (value) => createHash("sha256").update(value).digest("hex");
 const release = (tag = "v1.7.28") => ({
@@ -110,6 +112,41 @@ test("asset reordering is harmless; replacement or deletion invalidates results"
   assert.throws(() => assertUnchanged(r, edited));
   edited.assets = edited.assets.slice(1);
   assert.throws(() => assertUnchanged(r, edited));
+});
+test("final identity replacement revokes both pass status and full coverage", async (t) => {
+  const dir = await temporary(t),
+    p = plan();
+  await fs.writeFile(path.join(dir, "plan.json"), JSON.stringify(p));
+  for (const scenario of p.scenarios) {
+    const destination = path.join(dir, "reports", scenario.id);
+    await fs.mkdir(destination, { recursive: true });
+    await fs.writeFile(
+      path.join(destination, "report.json"),
+      JSON.stringify(passing(p, scenario)),
+    );
+  }
+  const replaced = release();
+  replaced.assets[0].id++;
+  t.mock.method(globalThis, "fetch", async () => Response.json(replaced));
+  const out = path.join(dir, "final");
+  assert.equal(
+    await runCLI([
+      "aggregate",
+      "--plan",
+      path.join(dir, "plan.json"),
+      "--reports",
+      path.join(dir, "reports"),
+      "--out",
+      out,
+    ]),
+    1,
+  );
+  const report = JSON.parse(
+    await fs.readFile(path.join(out, "report.json"), "utf8"),
+  );
+  assert.equal(report.status, "failed");
+  assert.equal(report.fullCoverage, false);
+  assert.match(report.releaseIdentityError, /changed/);
 });
 test("all 32 complete reports pass; missing runners and incomplete reports do not", () => {
   const p = plan(),
@@ -401,3 +438,17 @@ test("OS firewall rules close both IP families and offline permits only loopback
     mac.indexOf("pass out quick") < mac.indexOf("block drop out quick all"),
   );
 });
+
+test(
+  "Windows cleanup succeeds when the application is already stopped",
+  { skip: process.platform !== "win32" },
+  async () => {
+    await stopApp({
+      executable: path.join(
+        os.tmpdir(),
+        "nonexistent-ente-validator-app",
+        "ente.exe",
+      ),
+    });
+  },
+);

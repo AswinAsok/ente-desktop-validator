@@ -155,6 +155,7 @@ async function runCLI(argv) {
       assertUnchanged(plan.baseline, await getRelease(plan.baseline.tag_name));
     } catch (error) {
       report.status = "failed";
+      report.fullCoverage = false;
       report.releaseIdentityError = error.message;
     }
     await saveReport(report, directory);

@@ -30,7 +30,12 @@ import {
 } from "./inspect.js";
 import { preflight, install, stopApp } from "./install.js";
 import { NetworkPolicy } from "./network.js";
-import { instrument, normalLaunch, runML } from "./runtime.js";
+import {
+  instrument,
+  normalLaunch,
+  runML,
+  copyApplicationLogs,
+} from "./runtime.js";
 
 export async function preparePlan(tag, baselineTag) {
   const release = await getRelease(tag);
@@ -348,6 +353,13 @@ export async function runScenario(
       await app.dispose().catch(() => {});
     }
     await check(report, "network-restored", () => policy.restore());
+    if (app)
+      await check(report, "application-logs", () =>
+        copyApplicationLogs(
+          defaultProfileDirectory(),
+          path.join(artifacts, "application-logs"),
+        ),
+      );
     await check(report, "release-unchanged", async () => {
       assertUnchanged(plan.release, await getRelease(plan.release.tag_name));
       if (scenario.mode === "upgrade")

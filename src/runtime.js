@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import os from "node:os";
 import { createRequire } from "node:module";
 import { spawn } from "node:child_process";
 import { _electron } from "playwright";
@@ -14,6 +15,24 @@ import {
 import { stopApp } from "./install.js";
 import { versionOf } from "./matrix.js";
 const require = createRequire(import.meta.url);
+
+export async function copyApplicationLogs(profileDirectory, directory) {
+  const source =
+    process.platform === "darwin"
+      ? path.join(os.homedir(), "Library", "Logs", "ente")
+      : path.join(profileDirectory, "logs");
+  await fs.mkdir(directory, { recursive: true });
+  const copied = [];
+  for (const name of ["ente.log", "ente.old.log"]) {
+    try {
+      await fs.copyFile(path.join(source, name), path.join(directory, name));
+      copied.push(name);
+    } catch (error) {
+      if (error.code !== "ENOENT") throw error;
+    }
+  }
+  return { source, copied };
+}
 
 export function assertEmbedding(value, size, label) {
   if (
@@ -216,6 +235,7 @@ export async function instrument(
     const state = await electron.evaluate(({ app }) => ({
       version: app.getVersion(),
       profile: app.getPath("userData"),
+      logs: app.getPath("logs"),
       arch: globalThis.process.arch,
       appPath: app.getAppPath(),
     }));
