@@ -120,3 +120,27 @@ Run [34305250125](https://github.com/AswinAsok/ente-desktop-validator/actions/ru
 - Cross-platform CI [34304986735](https://github.com/AswinAsok/ente-desktop-validator/actions/runs/34304986735) passed. Local suite: 36 passed, one platform-specific skip. Syntax and actionlint passed.
 
 This supersedes the earlier runner-unavailable limitation for RPM/Pacman. It is native-architecture container userspace coverage on Ubuntu kernels, not full distribution VM coverage. See [runners.md](runners.md) for the container permissions, temporary namespace configuration, Fedora sudo policy, package bootstrap and image provenance. No new nightly container run or full-release approval is claimed by this targeted stable run.
+
+
+## September 9 nightly compatibility and full matrix
+
+The September 9 profile in revision `a801af7825df358e99c8ea8cc75d10f2ef9a1478`
+was reviewed against source `af9ac44f3bd6e1e33af385d0347661c648fd6337`.
+[Run 34306471827](https://github.com/AswinAsok/ente-desktop-validator/actions/runs/34306471827)
+passed preparation and completed all 28 scenarios, using the unchanged archived
+September 8 nightly baseline at source `2ffa837dab0540fd46c8863714ef944498e3b1d5`.
+The aggregate is **failed: 15 passed, 12 failed, 1 blocked**, fullCoverage false.
+
+- Passed: all four Windows x64 scenarios; Windows ARM64 standalone fresh/upgrade and combined fresh; all four macOS DMG scenarios; Linux x64 DEB and Fedora RPM fresh/upgrade. These exercised installed executables/resources, applicable signatures, production ML inference/downloads, all 11 model hashes, offline restart/reuse, and preference/marker preservation on upgrades.
+- Six Linux ARM64 DEB/RPM/AppImage scenarios failed the installed-files check: packaged FFmpeg is x64, expected ARM64.
+- Four Arch/Arch ARM scenarios failed dependency resolution because `http-parser`, declared by Ente, was unavailable from the configured repositories.
+- Two x64 AppImage scenarios failed with IndexedDB backing-store/LOCK errors after relaunch. Fresh failed at `renderer`; upgrade failed at `baseline-launch`. Logs establish the failure but do not distinguish app behavior from test-process cleanup; do not attribute these to a confirmed Ente regression.
+- Windows ARM64 combined upgrade passed every installation/runtime/model/upgrade check, but its final `release-unchanged` request encountered DNS `ENOTFOUND`. It remains blocked; application-check success does not waive final identity verification.
+
+The new source contract is supported and its bridge was verified against installed
+binaries on Windows, macOS and Linux. This does not endorse the release: the
+failures above remain. Unknown future fingerprints still stop preparation.
+Local regressions: 36 passed, one Windows-only skip. JavaScript syntax/workflow YAML
+passed, and [cross-platform CI 34306457025](https://github.com/AswinAsok/ente-desktop-validator/actions/runs/34306457025)
+passed at the same implementation revision. Fedora/Arch evidence remains container
+userspace coverage on Ubuntu kernels, not distribution VM coverage.
