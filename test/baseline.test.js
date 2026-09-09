@@ -9,8 +9,9 @@ import {
   assertArchiveUnchanged,
   baselineRelease,
   downloadAsset,
-  sameBuild,
 } from "../src/github.js";
+import { preparePlan } from "../src/run.js";
+import { combinations } from "../src/matrix.js";
 import { recheckRelease } from "../src/compatibility.js";
 const archiveResponse = (b) => ({
   id: b.archive.id,
@@ -103,15 +104,37 @@ test("archived installers download from the private snapshot using original size
   b.archive.assets[0].digest = `sha256:${"c".repeat(64)}`;
   await assert.rejects(downloadAsset(b.assets[0], dir, b), /does not match/);
 });
-test("a rebuilt rolling tag differs from its archived baseline, but copying the same build does not", () => {
-  const b = example(),
-    candidate = structuredClone(b);
-  delete candidate.archive;
-  assert.equal(sameBuild(candidate, b), true);
-  candidate.assets[0].id++;
-  assert.equal(sameBuild(candidate, b), true);
-  candidate.assets[0].digest = `sha256:${"d".repeat(64)}`;
-  assert.equal(sameBuild(candidate, b), false);
+test("preparation accepts the exact same release as candidate and baseline", async (t) => {
+  const profile = JSON.parse(
+    await fs.readFile(
+      new URL("../profiles/1.7.28.json", import.meta.url),
+      "utf8",
+    ),
+  );
+  const release = {
+    id: 28,
+    tag_name: "v1.7.28",
+    assets: [...new Set(combinations("v1.7.28").map((c) => c.asset))].map(
+      (name, id) => ({
+        name,
+        id,
+        size: 1,
+        digest: `sha256:${"a".repeat(64)}`,
+      }),
+    ),
+  };
+  t.mock.method(globalThis, "fetch", async (url) => {
+    if (String(url).includes("/releases/tags/")) return Response.json(release);
+    assert.ok(String(url).includes("/git/ref/tags/"));
+    return Response.json({
+      object: { type: "commit", sha: profile.source.commit },
+    });
+  });
+  const plan = await preparePlan("v1.7.28", "v1.7.28");
+  assert.deepEqual(plan.release, plan.baseline);
+  assert.equal(plan.expectedScenarios, 32);
+  assert.equal(plan.scenarios.filter((s) => s.mode === "fresh").length, 16);
+  assert.equal(plan.scenarios.filter((s) => s.mode === "upgrade").length, 16);
 });
 
 test(

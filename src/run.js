@@ -8,7 +8,6 @@ import {
   downloadAsset,
   download,
   fingerprint,
-  sameBuild,
 } from "./github.js";
 import {
   command,
@@ -58,10 +57,6 @@ export async function preparePlan(tag, baselineTag) {
     : await baselineRelease(tag);
   inventory(baseline);
   if (!baseline.archive) baseline.source = await captureSource(baseline);
-  if (sameBuild(release, baseline))
-    throw blocked(
-      "Candidate is the pinned baseline build; select a newer nightly or supply a different --baseline",
-    );
   const revision = await validatorRevision();
   return {
     schemaVersion: 2,

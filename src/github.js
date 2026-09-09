@@ -179,19 +179,6 @@ export async function assertArchiveUnchanged(release) {
   )
     throw blocked("Archived baseline hashes differ from the original nightly");
 }
-export function sameBuild(a, b) {
-  const bytes = (r) =>
-    r.assets
-      .map((x) => [x.name, x.size, x.digest])
-      .sort((x, y) => x[0].localeCompare(y[0]));
-  return (
-    releaseDescriptor(a).repository === releaseDescriptor(b).repository &&
-    versionOf(a) === versionOf(b) &&
-    a.source?.commit === b.source?.commit &&
-    JSON.stringify(bytes(a)) === JSON.stringify(bytes(b))
-  );
-}
-
 export async function download(url, target, { sha256, size, token } = {}) {
   const parsed = new URL(url);
   if (
