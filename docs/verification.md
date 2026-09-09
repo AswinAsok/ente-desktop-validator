@@ -106,3 +106,17 @@ No healthy full nightly release approval is claimed. No Ente source, repository,
 All 12 installers from today’s v1.7.29-beta build (2,154,095,035 bytes total) were downloaded and SHA-256 verified, then archived unchanged in the private standalone repository’s [dated baseline release](https://github.com/AswinAsok/ente-desktop-validator/releases/tag/baseline-photos-desktop-2026-09-08). GitHub’s archived asset sizes and SHA-256 digests exactly match the original release. `baselines/nightly.json` records both original and archive asset identities plus the original source commit.
 
 Future nightly runs use this fixed baseline by default; explicit baselines override it, and stable defaults remain preceding stable. Same-build comparisons are blocked; rebuilt rolling tags with the same version are supported, with explicit Linux package reinstallation. A moved upstream tag no longer changes or invalidates the archived baseline; changing/deleting archive assets blocks validation. The 35 passing local regressions include pin selection, archive integrity, archive downloads, build distinction and native package-manager argument checks (one Windows-only check is skipped locally). These checks do not claim a native upgrade to a future build that has not been published yet.
+
+
+## Hosted Fedora/Arch containers — September 9, 2026
+
+Run [34305250125](https://github.com/AswinAsok/ente-desktop-validator/actions/runs/34305250125), implementation revision `476e949601405269fd6d3f9e7b9cc8b5da0b9354`, tested all eight RPM/Pacman cases for v1.7.28 with baseline v1.7.27 on GitHub-hosted x64/ARM64 Ubuntu machines.
+
+- All eight container environment and isolation checks passed, including user/PID namespaces and native online/offline kernel-network probes.
+- Fedora x64 fresh and upgrade passed all application checks: installation, normal launch, file inventory, production face/pet/image/text inference, 11 model hashes, offline restart/reuse, and upgrade preference/marker preservation.
+- Fedora ARM64 fresh and upgrade failed because packaged FFmpeg is x64.
+- All four Arch/Arch ARM cases failed native dependency resolution: Ente declares `http-parser`, unavailable from the configured distribution repositories. Dependencies were not fabricated or ignored to obtain a pass.
+- Aggregate: 2 passed, 6 failed, 24 blocked (unselected stable scenarios), fullCoverage false. Downloaded scenario reports independently reproduced the hosted aggregate.
+- Cross-platform CI [34304986735](https://github.com/AswinAsok/ente-desktop-validator/actions/runs/34304986735) passed. Local suite: 36 passed, one platform-specific skip. Syntax and actionlint passed.
+
+This supersedes the earlier runner-unavailable limitation for RPM/Pacman. It is native-architecture container userspace coverage on Ubuntu kernels, not full distribution VM coverage. See [runners.md](runners.md) for the container permissions, temporary namespace configuration, Fedora sudo policy, package bootstrap and image provenance. No new nightly container run or full-release approval is claimed by this targeted stable run.
