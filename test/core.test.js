@@ -169,6 +169,13 @@ test("all 32 complete reports pass; missing runners and incomplete reports do no
   const p = plan(),
     reports = p.scenarios.map((s) => passing(p, s));
   assert.equal(aggregate(p, reports).status, "passed");
+  assert.equal(aggregate(p, reports).coverageScope.containers, 8);
+  const unverifiedContainer = structuredClone(reports);
+  const container = unverifiedContainer.find((r) => r.scenario.container);
+  container.checks = container.checks.filter(
+    (c) => c.id !== "container-isolation",
+  );
+  assert.equal(aggregate(p, unverifiedContainer).status, "failed");
   assert.equal(aggregate(p, reports.slice(1)).status, "blocked");
   const bad = structuredClone(reports);
   bad[0].checks.pop();

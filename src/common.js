@@ -127,7 +127,13 @@ export async function validatorRevision() {
   );
   const hash = createHash("sha256");
   const files = ["package.json", "package-lock.json"];
-  for (const directory of ["src", "scripts", "profiles", ".github/workflows"]) {
+  for (const directory of [
+    "src",
+    "scripts",
+    "containers",
+    "profiles",
+    ".github/workflows",
+  ]) {
     for (const name of await fs.readdir(path.join(root, directory)))
       files.push(`${directory}/${name}`);
   }

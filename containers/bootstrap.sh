@@ -8,8 +8,8 @@ if [[ "$ID" == fedora ]]; then
 else
   pacman-key --init
   if [[ "$ID" == archarm ]]; then pacman-key --populate archlinuxarm; else pacman-key --populate archlinux; fi
-  pacman -Syu --noconfirm
-  pacman -S --needed --noconfirm sudo git curl tar gzip procps-ng util-linux shadow \
+  pacman -Syu --noconfirm --disable-sandbox
+  pacman -S --needed --noconfirm --disable-sandbox sudo git curl tar gzip procps-ng util-linux shadow \
     xorg-server-xvfb xorg-xauth imagemagick nftables nss at-spi2-core gtk3 alsa-lib mesa dbus
 fi
 # Minimal Fedora images can omit shadow accounts; create them before adding the test user.

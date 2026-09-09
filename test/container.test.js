@@ -41,5 +41,5 @@ test("all Fedora/Arch scenarios use matching native hosted architecture and requ
     /--network[= ]host|--pid[= ]host|--privileged|docker\.sock|--no-sandbox/,
   );
   assert.match(script, /--cap-add NET_ADMIN/);
-  assert.match(script, /-u validator dbus-run-session -- xvfb-run/);
+  assert.match(script, /--reuid validator --regid validator --init-groups dbus-run-session -- xvfb-run/);
 });

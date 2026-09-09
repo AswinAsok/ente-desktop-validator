@@ -11,6 +11,7 @@ cleanup() {
   code=$?
   trap - EXIT
   docker rm -f "$name" >/dev/null 2>&1 || true
+  if [[ -n "${userns_policy:-}" ]]; then sudo sysctl -w "kernel.apparmor_restrict_unprivileged_userns=$userns_policy"; fi
   sudo chown -R "$(id -u):$(id -g)" "$out"
   if [[ ! -f "$out/report.json" ]]; then
     node src/cli.js run --plan reports/plan/plan.json --scenario "$SCENARIO" --out "$out" --disposable \
@@ -46,6 +47,11 @@ docker build --build-arg "BASE_IMAGE=$base" -t ente-validator-container "$contex
 docker image inspect ente-validator-container > "$out/artifacts/container-image.json"
 # Allow nftables in the private network namespace and Chromium's normal namespace sandbox.
 # DNS uses a literal external server: Docker's loopback DNS proxy must not bypass offline rules.
+# Ubuntu's host-level userns restriction also applies inside unconfined containers.
+# Enable normal Chromium namespaces on this disposable VM, then restore in cleanup.
+userns_policy=$(sysctl -n kernel.apparmor_restrict_unprivileged_userns)
+printf '%s\n' "$userns_policy" > "$out/artifacts/host-userns-policy.txt"
+sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
 docker run --name "$name" --init --network bridge --dns 1.1.1.1 \
   --cap-add NET_ADMIN --cap-add SYS_ADMIN \
   --security-opt seccomp=unconfined --security-opt apparmor=unconfined \
@@ -57,7 +63,6 @@ docker run --name "$name" --init --network bridge --dns 1.1.1.1 \
     chown -R validator:validator /workspace/reports
     git config --system --add safe.directory /workspace
     if command -v rpm >/dev/null; then rpm -qa | sort; else pacman -Q; fi > "reports/scenarios/$SCENARIO/artifacts/container-packages.txt"
-    exec sudo --preserve-env=GH_TOKEN,BASELINE_READ_TOKEN,SCENARIO,ENTE_VALIDATOR_CONTAINER,GITHUB_ACTIONS,RUNNER_ENVIRONMENT \
-      -u validator dbus-run-session -- xvfb-run -a node src/cli.js run \
+    exec setpriv --reuid validator --regid validator --init-groups dbus-run-session -- xvfb-run -a node src/cli.js run \
       --plan reports/plan/plan.json --scenario "$SCENARIO" --out "reports/scenarios/$SCENARIO" --disposable
   '
