@@ -39,12 +39,13 @@ import {
   verifyUpgradeProfile,
 } from "../src/run.js";
 import { aggregate, requiredChecks, saveReport } from "../src/report.js";
+import { runCLI } from "../src/cli.js";
 const tag = "photos-desktop-v1.7.29-beta";
-const release = () => ({
-  ...releaseDescriptor(tag),
+const release = (input = tag) => ({
+  ...releaseDescriptor(input),
   id: 29,
-  tag_name: tag,
-  assets: [...new Set(combinations(tag).map((c) => c.asset))].map(
+  tag_name: input,
+  assets: [...new Set(combinations(input).map((c) => c.asset))].map(
     (name, id) => ({
       name,
       id,
@@ -54,6 +55,84 @@ const release = () => ({
       updated_at: "2026-09-08T08:20:00Z",
     }),
   ),
+});
+test("RC tags retain publication identity while packages and installed checks use the source version", async (t) => {
+  const rc = "photos-desktop-v1.7.29-rc";
+  for (const input of [
+    rc,
+    `https://github.com/ente/nightly/releases/tag/${rc}`,
+    `https://github.com/ente/nightly/releases#release-${rc}`,
+  ]) {
+    assert.equal(releaseRef(input), rc);
+    assert.deepEqual(releaseDescriptor(input), {
+      repository: "ente/nightly",
+      tag: rc,
+      version: "1.7.29",
+      channel: "nightly",
+    });
+  }
+  assert.equal(versionOf(release(rc)), "1.7.29");
+  assert.equal(versionOf("photos-desktop-v1.7.30-beta-rc"), "1.7.30-beta");
+  assert.equal(versionOf("v1.7.29-rc"), "1.7.29-rc");
+  assert.equal(releaseDescriptor("v1.7.29").channel, "stable");
+  assert.equal(matrix(rc).length, 28);
+  assert.equal(inventory(release(rc)).packages, 12);
+  assert.ok(
+    matrix(rc).every(
+      (s) =>
+        s.asset.startsWith("ente-1.7.29-") || s.asset === "ente-1.7.29.exe",
+    ),
+  );
+  for (const alter of [
+    (r) => r.assets.pop(),
+    (r) => r.assets.push(r.assets[0]),
+    (r) =>
+      r.assets.forEach((a) => (a.name = a.name.replace("1.7.29", "1.7.29-rc"))),
+  ]) {
+    const r = release(rc);
+    alter(r);
+    assert.throws(() => inventory(r));
+  }
+  let url;
+  t.mock.method(globalThis, "fetch", async (input) => {
+    url = String(input);
+    return Response.json(release(rc));
+  });
+  const selected = await getRelease(rc);
+  assert.match(
+    url,
+    /repos\/ente\/nightly\/releases\/tags\/photos-desktop-v1.7.29-rc$/,
+  );
+  assert.equal(selected.version, "1.7.29");
+  assert.equal(identity(selected).tag, rc);
+});
+test("RC static inspection resolves a reviewed nightly contract before trying a stable version profile", async (t) => {
+  let calls = 0;
+  t.mock.method(globalThis, "fetch", async () => {
+    calls++;
+    return new Response("denied", { status: 403 });
+  });
+  const out = await temporary(t);
+  assert.equal(
+    await runCLI([
+      "inspect",
+      "--release",
+      "photos-desktop-v1.7.29-rc",
+      "--combination",
+      "linux-x64-deb",
+      "--root",
+      out,
+      "--out",
+      out,
+    ]),
+    1,
+  );
+  assert.equal(calls, 1);
+  const report = JSON.parse(
+    await fs.readFile(path.join(out, "report.json"), "utf8"),
+  );
+  assert.match(report.checks[0].error, /HTTP 403/);
+  assert.equal(report.status, "blocked");
 });
 const run = () => ({
   id: 123,

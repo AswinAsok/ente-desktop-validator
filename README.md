@@ -4,7 +4,7 @@ An independent Node.js CLI and GitHub Actions project that tests **the installed
 
 The standalone project is available at [AswinAsok/ente-desktop-validator](https://github.com/AswinAsok/ente-desktop-validator). Native verification evidence and remaining coverage gaps are recorded in [docs/verification.md](docs/verification.md).
 
-Reviewed profiles cover stable **v1.7.28** and nightly **photos-desktop-v1.7.29-beta**. Nightly reuse requires matching source contracts; a version label alone never grants compatibility. Unsupported targets stop during preparation with an explanatory report, before native jobs start. v1.7.27 remains supported only as an upgrade baseline.
+Reviewed profiles cover stable **v1.7.28** and nightly **photos-desktop-v1.7.29-beta**, and release candidate **photos-desktop-v1.7.29-rc**. Nightly reuse requires matching source contracts; a version label alone never grants compatibility. Unsupported targets stop during preparation with an explanatory report, before native jobs start. v1.7.27 remains supported only as an upgrade baseline.
 
 ## Quick start
 
@@ -29,6 +29,15 @@ For the nightly release (the pasted fragment URL also works):
 node src/cli.js dispatch --host YOUR-OWNER/ente-desktop-validator \
   --release 'https://github.com/ente/nightly/releases#release-photos-desktop-v1.7.29-beta' --baseline v1.7.28 --watch
 ```
+
+Release candidates published in `ente/nightly` use the same CLI and manual workflow:
+
+```sh
+node src/cli.js dispatch --host YOUR-OWNER/ente-desktop-validator \
+  --release 'https://github.com/ente/nightly/releases/tag/photos-desktop-v1.7.29-rc' --watch
+```
+
+The canonical URL, `releases#release-photos-desktop-v1.7.29-rc` fragment URL, and bare `photos-desktop-v1.7.29-rc` tag are accepted. Ente's release-branch workflow adds `-rc` only to the release tag: this candidate's app and package version is `1.7.29`. API requests and source-tag checks retain the full RC tag; asset names and installed-version checks use the app version. RCs use the explicit nightly matrix of 12 packages and 28 scenarios, with the same archived baseline by default. Unknown source contracts still require review; packages are never selected by guessing from whichever assets happen to exist. This does not enable unreviewed stable v1.7.29 validation.
 
 Future nightly upgrades default to the **2026-09-08 nightly snapshot** (`1.7.29-beta`, source `2ffa837d`). All 12 original installers are preserved in the private standalone repository, so an upstream tag replacement cannot change the baseline. The same build may be used as both candidate and baseline. In that case, upgrade scenarios test reinstalling that build and preserving its profile; fresh scenarios still test a clean installation. Use `--baseline v1.7.28` to test upgrading from the stable release instead. Preparation records the candidate source commit and successful publication evidence. Archived baselines preserve their original commit and validate the stored asset IDs, sizes and hashes. A partially published nightly, moving source tag, changed asset, unavailable build log, or unknown source contract cannot pass. No scheduled workflow is added.
 

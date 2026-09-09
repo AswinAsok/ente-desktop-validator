@@ -134,14 +134,14 @@ async function runCLI(argv) {
       runtimeTested: false,
     };
     await check(report, "installed-files", async () => {
-      const root = path.resolve(opts.root),
-        profile = await loadProfile(tag);
+      const root = path.resolve(opts.root);
+      let profile;
       if (releaseDescriptor(tag).channel === "nightly") {
         const release = await getRelease(tag);
         release.source = await captureSource(release);
-        Object.assign(profile, await reviewedProfile(release));
+        profile = await reviewedProfile(release);
         report.release = release;
-      }
+      } else profile = await loadProfile(tag);
       await writeJSON(
         path.join(directory, "installed-files.json"),
         await fileInventory(root),

@@ -87,3 +87,37 @@ Unknown future digests still stop preparation. Source review permits testing the
 installed binaries; it does not grant a runtime pass. The full matrix must still
 check actual installation, resources, inference, model integrity, offline reuse
 and upgrade preservation, and report any failures without weakening expectations.
+
+
+## Release candidate 1.7.29 review
+
+`profiles/1.7.29-rc.json` reviews source commit
+`6785c987bd633deb53c1897ec3510c32937ecefd` and contract SHA-256
+`73c0d93c02e0b4d05960ede8a33e4819c14fd2021e766f6e3a1617a0c1cf69a3`.
+Its application version is `1.7.29`, repository/channel is `ente/nightly`/`nightly`,
+and publishing tag is `photos-desktop-v1.7.29-rc`.
+
+The pinned [desktop build workflow](https://github.com/ente/ente/blob/6785c987bd633deb53c1897ec3510c32937ecefd/.github/workflows/photos-desktop-build.yml)
+sets `release_tag` to `photos-desktop-v${release_version}-rc` on a release branch,
+while package.json/package-lock.json retain `release_version`. The validator
+mirrors this naming rule only for `photos-desktop-` tags ending in `-rc`.
+For example, a `1.7.30-beta-rc` publishing tag refers to app version `1.7.30-beta`.
+Bare stable tags and normal beta app versions retain their original semantics.
+The source package version must still match, and all expected package names are
+validated against the explicit matrix before installation.
+
+The [source comparison](https://github.com/ente/ente/compare/af9ac44f3bd6e1e33af385d0347661c648fd6337...6785c987bd633deb53c1897ec3510c32937ecefd)
+has 18 commits and 21 changed files:
+
+- Desktop package files change only the root app version. Desktop source (`a3625faeecd6c8a39c7c9f6a111a0d8d5054892e`), packaging (`1604d32650f68cdc2cad341f3f4a9372d6d4315e`), resource scripts and publishing workflow match the reviewed September 9 beta.
+- The complete NAPI binding tree (`7ddfedf13ad35c931096ef5818c2d044f315f351`), Rust dependency lock (`37fc44209e2d768e861c71d58cbd6ca1fa49e0f4`), model catalog (`faf35f4c7dd1ae1ac75b6e74f0eb53dc3b7c2038`) and renderer ML service tree (`5c2705581f43683429b131100bd291db45047fc5`) are unchanged. The existing adapter, ORT version, all 11 model hashes/sizes, output shapes and packaged-resource expectations remain applicable.
+- Rust changes optimize the vector database graph/storage and its development build profile. The NAPI exports exercised by this validator are model loading, image analysis and CLIP text inference; they do not expose vector database search. Search recall and graph persistence are outside this validator's acceptance coverage.
+- The web lock updates Next/SWC to 16.3.4, SWC helpers to 0.5.23, Sharp to 0.35.4/libvips 1.3.3, and Vitest to 4.1.11. The desktop lock and separately staged native tools remain unchanged. Renderer launch/bridge checks and actual image inference must still pass against the built output; dependency updates are not normalized out of the fingerprint.
+- Other changes update the What's New text/version and web CI checks, without changing the ML bridge contract.
+
+Upstream publishing evidence was captured from successful run
+[34319497523](https://github.com/ente/ente/actions/runs/34319497523), including all
+three platform build jobs and the finish-build checkout/tag evidence. The RC
+contains all 12 expected packages. Its full tag, asset identities and source tag
+remain subject to final rechecks. The archived September 8 baseline is unchanged.
+Source review authorizes runtime testing; it does not grant a release pass.

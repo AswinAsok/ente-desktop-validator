@@ -1,11 +1,21 @@
 export const REPOSITORY = "ente/photos-desktop";
 
-export function versionOf(tag) {
+function tagVersion(tag) {
   if (typeof tag === "object") tag = tag.tag_name ?? tag.tag;
   tag = tag?.replace(/^photos-desktop-/, "");
   if (!/^v?\d+\.\d+\.\d+(?:-[a-zA-Z0-9.-]+)?$/.test(tag))
     throw new Error("Expected a version tag such as v1.7.28");
   return tag.replace(/^v/, "");
+}
+
+export function versionOf(input) {
+  const tag = typeof input === "object" ? (input.tag_name ?? input.tag) : input;
+  const version = tagVersion(tag);
+  // Ente's release-branch workflow appends -rc to the GitHub tag only.
+  // Keep the source/package version (including -beta, if present) intact.
+  return tag.startsWith("photos-desktop-")
+    ? version.replace(/-rc$/, "")
+    : version;
 }
 
 export function releaseRef(input) {
@@ -36,7 +46,7 @@ export function releaseRef(input) {
     )
       throw new Error("Release tag does not match its repository");
   }
-  return `${input.startsWith("photos-desktop-") ? "photos-desktop-" : ""}v${versionOf(input)}`;
+  return `${input.startsWith("photos-desktop-") ? "photos-desktop-" : ""}v${tagVersion(input)}`;
 }
 
 export function releaseDescriptor(input) {

@@ -329,6 +329,10 @@ export function markdown(report) {
     lines.push(
       `Upgrade baseline: **${escape(report.baseline.repository)} ${escape(report.baseline.tag)}**${report.baseline.archive ? ` · archived as ${escape(report.baseline.archive.tag)}` : ""}${report.baseline.source?.commit ? ` · source ${escape(report.baseline.source.commit)}` : ""}.`,
     );
+  if (report.release?.version)
+    lines.push(
+      `Packaged application version: **${escape(report.release.version)}**. The GitHub release tag may include a separate release-candidate label.`,
+    );
   if (report.validatorRevision)
     lines.push(`Validator revision: ${escape(report.validatorRevision)}.`);
   if (report.scenario?.container || report.coverageScope?.containers)

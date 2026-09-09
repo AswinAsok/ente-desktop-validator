@@ -61,8 +61,10 @@ test("future nightly defaults retain the dated archive, not the moving upstream 
   );
   assert.equal(selected.archive.tag, "baseline-photos-desktop-2026-09-08");
   assert.equal(selected.assets.length, 12);
+  const rcBaseline = await baselineRelease("photos-desktop-v1.7.29-rc");
+  assert.deepEqual(rcBaseline, selected);
   await recheckRelease(selected);
-  assert.equal(urls.length, 2);
+  assert.equal(urls.length, 3);
   assert.ok(
     urls.every((u) =>
       u.includes("repos/AswinAsok/ente-desktop-validator/releases/"),
