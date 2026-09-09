@@ -12,7 +12,9 @@ else
   pacman -S --needed --noconfirm sudo git curl tar gzip procps-ng util-linux shadow \
     xorg-server-xvfb xorg-xauth imagemagick nftables nss at-spi2-core gtk3 alsa-lib mesa dbus
 fi
-useradd --create-home --uid 1001 validator
-printf 'validator ALL=(ALL) NOPASSWD: ALL\n' > /etc/sudoers.d/validator
+# Minimal Fedora images can omit shadow accounts; create them before adding the test user.
+pwconv
+useradd --create-home --uid 1001 --comment 'Ente validator' --password '*' validator
+printf 'Defaults secure_path="/opt/node/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"\nvalidator ALL=(ALL) NOPASSWD: ALL\n' > /etc/sudoers.d/validator
 chmod 440 /etc/sudoers.d/validator
-node --version
+su -s /bin/bash validator -c 'sudo -n true && node --version'

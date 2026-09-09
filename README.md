@@ -54,7 +54,7 @@ The result is explicitly marked `static-inspection`, with `runtimeTested: false`
 
 Container setup or isolation failures are reported as blocked/failed; they are never silently omitted. Missing/cancelled reports become blocked in aggregation. Containers validate Fedora/Arch userspace on Ubuntu kernels, not full distribution VMs.
 
-Each native scenario gets its own fresh hosted VM or single-job dedicated VM. There is no Ente/model cache between jobs. The workflow keeps logs and reports for 14 days. It never uploads downloaded installers, model weights, firewall backups, or application profiles.
+Each scenario gets a fresh hosted VM, with its own disposable container for Fedora/Arch. There is no Ente/model cache between jobs. The workflow keeps logs and reports for 14 days. It never uploads downloaded installers, model weights, firewall backups, or application profiles.
 
 ## Coverage
 
