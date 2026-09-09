@@ -62,6 +62,7 @@ docker run --name "$name" --init --network bridge --dns 1.1.1.1 \
   ente-validator-container bash -euc '
     chown -R validator:validator /workspace/reports
     git config --system --add safe.directory /workspace
+    cp /etc/sudoers.d/validator "reports/scenarios/$SCENARIO/artifacts/container-sudoers.txt"
     if command -v rpm >/dev/null; then rpm -qa | sort; else pacman -Q; fi > "reports/scenarios/$SCENARIO/artifacts/container-packages.txt"
     exec setpriv --reuid validator --regid validator --init-groups dbus-run-session -- xvfb-run -a node src/cli.js run \
       --plan reports/plan/plan.json --scenario "$SCENARIO" --out "reports/scenarios/$SCENARIO" --disposable

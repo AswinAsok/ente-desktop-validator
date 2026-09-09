@@ -16,5 +16,11 @@ fi
 pwconv
 useradd --create-home --uid 1001 --comment 'Ente validator' --password '*' validator
 printf 'Defaults secure_path="/opt/node/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"\nvalidator ALL=(ALL) NOPASSWD: ALL\n' > /etc/sudoers.d/validator
+if [[ "$ID" == fedora ]]; then
+  # This single-use local account has NOPASSWD access; container PAM account
+  # validation fails on Ubuntu hosts even when the same image passes at build time.
+  printf 'Defaults:validator !pam_acct_mgmt\n' >> /etc/sudoers.d/validator
+fi
 chmod 440 /etc/sudoers.d/validator
+visudo -cf /etc/sudoers.d/validator
 su -s /bin/bash validator -c 'sudo -n true && node --version'
