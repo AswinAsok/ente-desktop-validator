@@ -1,57 +1,30 @@
-# Disposable test machines
+# Disposable test environments
 
-Use GitHub-hosted machines for Windows x64/ARM64, macOS Intel/Apple Silicon, and Ubuntu x64/ARM64. Their exact labels are maintained in `src/matrix.js`.
+All scenarios now use GitHub-hosted machines. Windows, macOS, DEB and AppImage jobs run directly on their hosted machines. Fedora RPM and Arch Pacman jobs run inside fresh native-architecture containers on hosted Ubuntu machines.
 
-The remaining jobs require these dedicated runner labels:
+| Package | Container userspace | GitHub host |
+| --- | --- | --- |
+| RPM x64 | Fedora 44 | ubuntu-24.04 |
+| RPM ARM64 | Fedora 44 | ubuntu-24.04-arm |
+| Pacman x64 | Arch Linux | ubuntu-24.04 |
+| Pacman ARM64 | Arch Linux ARM | ubuntu-24.04-arm |
 
-| Image                      | Architecture | Custom label            |
-| -------------------------- | ------------ | ----------------------- |
-| Fedora (supported release) | x64          | `ente-validator-fedora` |
-| Fedora (supported release) | ARM64        | `ente-validator-fedora` |
-| Arch Linux                 | x64          | `ente-validator-arch`   |
-| Arch Linux ARM             | ARM64        | `ente-validator-arch`   |
+Each row runs once fresh and once as an upgrade. No self-hosted runner fleet or `RUNNER_DISCOVERY_TOKEN` is needed. Dispatch the existing manual workflow; it selects containers automatically. Private repositories consume their included hosted-runner minutes and storage allowance. This is not an unlimited-free hosting service, and no repository visibility or billing settings are changed.
 
-Retain GitHub's default `self-hosted`, `Linux`, and `X64`/`ARM64` labels. The native architecture is checked at runtime; emulation is not accepted as native coverage.
+## Scope and isolation
 
-## Image preparation
+These eight scenarios validate native RPM/Pacman installation, installed files and CPU architecture, normal Electron launch, existing ML interfaces, model downloads and offline inference in the distribution's userspace. They share the Ubuntu host kernel. They do **not** establish full Fedora/Arch VM, SELinux, systemd desktop-session, or distribution-kernel compatibility. JSON and Markdown reports identify this scope; `fullCoverage` means all scenarios in this mixed machine/container matrix passed.
 
-Create dedicated VM images with an ordinary login user, passwordless sudo, Git, curl, Node.js 24+, a current GitHub Actions runner, and a display usable by Xvfb. There must be no Ente installation or application profile. Pin the image/snapshot revision in your VM infrastructure.
+`scripts/run-container.sh` builds and destroys one container per job. It uses a private bridge network and PID namespace, a non-root desktop user, Xvfb, and D-Bus. No host network, host PID namespace, Docker socket, or personal home directory is mounted. Only the standalone workspace is mounted. `NET_ADMIN` permits nftables inside the container network namespace. `SYS_ADMIN` and relaxed Docker seccomp/AppArmor profiles allow Chromium's normal namespace sandbox; no `--no-sandbox` flag is supplied, and application files are not patched.
 
-Example package preparation **inside the disposable image**:
+Before installation, the required `container-isolation` check verifies user/PID namespaces and exercises online/offline kernel egress rules with external native curl processes. Online allows the model CDN and DNS only; offline allows only loopback. A literal external DNS server avoids Docker's loopback DNS proxy. All Ente utility/ML processes inherit the restricted network namespace. Actual offline model reuse remains a separate required runtime check.
 
-```sh
-# Fedora
-sudo dnf install -y git curl tar gzip xorg-x11-server-Xvfb xorg-x11-xauth \
-  ImageMagick nftables fuse-libs nss atk at-spi2-atk gtk3 alsa-lib mesa-libgbm
+The host Actions control connection is outside that namespace. Cleanup destroys the container after success, failure or cancellation. Setup failures produce blocked reports where the controller can still run; missing artifacts can never yield an overall pass. The host firewall restore step applies only to direct-machine jobs.
 
-# Arch Linux / Arch Linux ARM
-sudo pacman -Syu --noconfirm
-sudo pacman -S --needed --noconfirm git curl tar gzip xorg-server-xvfb xorg-xauth \
-  imagemagick nftables fuse2 nss at-spi2-core gtk3 alsa-lib mesa
-```
+## Image provenance
 
-Install any remaining **declared package dependencies** through the native package manager; the validator caches them before enforcing model-only network access. Do not repair the candidate's missing packaged files. Run under a non-root user with `xvfb-run`, as the workflow does.
+Fedora uses `quay.io/fedora/fedora:44`; x64 Arch uses the official `archlinux:base` image. Arch ARM is imported from the project's generic AArch64 root filesystem at `https://de3.mirror.archlinuxarm.org/os/ArchLinuxARM-aarch64-latest.tar.gz`. This named project mirror supports valid HTTPS; the generic `os.archlinuxarm.org` hostname currently does not have a matching TLS certificate. TLS verification is never disabled.
 
-## Registration and lifecycle
+The image setup installs distribution dependencies through DNF/Pacman, retaining package-signature verification. Node 24 comes from the hosted job's `actions/setup-node` installation, copied into the image. The job artifacts record the base image digest or downloaded rootfs SHA-256/source, built image identity, installed OS package versions, setup log, and isolation probes. Distribution repositories and base tags can move between runs; use these artifacts to identify the exact environment used. The rootfs SHA-256 is an observed download identity, not a publisher signature.
 
-Create a short-lived registration token for the **standalone validator repository**. In the prepared runner directory, register one job per VM:
-
-```sh
-./config.sh --url https://github.com/YOUR-OWNER/ente-desktop-validator \
-  --token "$RUNNER_REGISTRATION_TOKEN" --ephemeral --unattended \
-  --labels ente-validator-fedora
-ENTE_VALIDATOR_EPHEMERAL=1 ./run.sh
-```
-
-Use `ente-validator-arch` for Arch images. Provision new VMs or revert a clean snapshot for subsequent jobs. `--ephemeral` unregisters the runner; **your VM supervisor must destroy/reset the machine after it exits**. Do not run a persistent VM repeatedly with a new runner registration and call it clean.
-
-The preparation job uses `RUNNER_DISCOVERY_TOKEN` to verify that matching runners are online. It needs repository runner-list access (fine-grained repository Administration read permission). Without discovery access, dedicated scenarios are explicitly blocked. Start enough ephemeral runners for the desired concurrency, or let your infrastructure replenish them as jobs finish. Availability can change after discovery; queued jobs can be cancelled and their missing reports will not pass aggregation.
-
-## Network and desktop requirements
-
-- Linux needs `sudo nft`, a usable X server, and permission to run Chromium's normal sandbox. AppImage jobs require functional FUSE.
-- macOS needs a GUI login session and stock `/etc/pf.conf` on a disposable host. The validator temporarily replaces PF rules and restores that stock configuration and the prior enabled state. Do not use a host with unrelated dynamic PF state.
-- Windows needs an administrator desktop session and permission to export/import Defender Firewall policy. The harness temporarily disables existing outbound allow rules and allows only the specified test traffic. Normal user/UAC installation behavior is not covered by an administrator-hosted test.
-- Linux/macOS runners share machine-wide egress restrictions and logging can pause temporarily. Hosted Windows keeps explicit HTTPS rules for the running `Runner.Listener`, `Runner.Worker`, and `Runner.PluginHost` executables because losing their control connection can cancel jobs. No exception is granted to Ente or its utility processes. The report records these control-program paths. Artifact upload happens after restoration.
-
-No cloud account, VM subscription, or hardware fleet is provisioned by this repository. Those machine resources must be supplied before native coverage can complete.
+A future need for full distribution-kernel coverage would require dedicated VMs. It must not be inferred from a container pass.

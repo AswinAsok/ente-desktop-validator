@@ -50,9 +50,9 @@ The result is explicitly marked `static-inspection`, with `runtimeTested: false`
 1. Push this repository to your own GitHub repository and enable Actions. Keep it separate from `ente/ente` and `ente/photos-desktop`.
 2. Use **Validate Ente desktop release → Run workflow**, or the CLI command above. `release` accepts a tag or an Ente release URL. An empty `baseline` selects the archived 2026-09-08 snapshot for nightly candidates and the preceding stable version for stable candidates. An explicit baseline accepts either repository’s release URL.
 3. Public release assets require no additional secret. To read drafts, set **`ENTE_RELEASE_READ_TOKEN`** to a credential with read access to `ente/photos-desktop`.
-4. For Fedora and Arch coverage, provision disposable runners as described in [docs/runners.md](docs/runners.md). Set **`RUNNER_DISCOVERY_TOKEN`** with permission to list runners in the standalone repository. This token is used only by the preparation job.
+4. Fedora and Arch scenarios run automatically in disposable containers on native x64/ARM64 GitHub-hosted Ubuntu machines. No local machines or runner-discovery secret are needed. See [docs/runners.md](docs/runners.md) for setup, billing and coverage scope.
 
-When dedicated-runner discovery is unavailable, their scenarios run as bookkeeping jobs on Ubuntu and report **blocked**. They are not silently omitted. An available runner that later goes offline can leave its job queued; cancel that run if necessary. Missing/cancelled reports become blocked in aggregation.
+Container setup or isolation failures are reported as blocked/failed; they are never silently omitted. Missing/cancelled reports become blocked in aggregation. Containers validate Fedora/Arch userspace on Ubuntu kernels, not full distribution VMs.
 
 Each native scenario gets its own fresh hosted VM or single-job dedicated VM. There is no Ente/model cache between jobs. The workflow keeps logs and reports for 14 days. It never uploads downloaded installers, model weights, firewall backups, or application profiles.
 
@@ -64,7 +64,7 @@ Each native scenario gets its own fresh hosted VM or single-job dedicated VM. Th
 | macOS   | Universal DMG and ZIP            | Both on Intel and Apple Silicon                               |
 | Linux   | DEB, RPM, Pacman, AppImage       | Each on x64 and ARM64                                         |
 
-Stable releases require 13 packages, 16 package/architecture combinations, and **32 fresh-install/upgrade scenarios**. The reviewed nightly publishing workflow intentionally omits macOS ZIP: nightly coverage is **12 packages, 14 combinations, and 28 scenarios**. Eight Fedora/Arch scenarios remain blocked until dedicated runners are provisioned. Windows uses the default per-user installation under `%LOCALAPPDATA%\Programs\ente`, not an assumed Program Files location. Linux packages use native package managers; AppImages use their actual FUSE runtime. macOS bundles are copied into `/Applications`.
+Stable releases require 13 packages, 16 package/architecture combinations, and **32 fresh-install/upgrade scenarios**. The reviewed nightly publishing workflow intentionally omits macOS ZIP: nightly coverage is **12 packages, 14 combinations, and 28 scenarios**. Eight Fedora/Arch scenarios use disposable native-architecture containers on Ubuntu kernels. Reports explicitly distinguish this userspace coverage from direct-machine checks. Windows uses the default per-user installation under `%LOCALAPPDATA%\Programs\ente`, not an assumed Program Files location. Linux packages use native package managers; AppImages use their actual FUSE runtime. macOS bundles are copied into `/Applications`.
 
 Checks include:
 

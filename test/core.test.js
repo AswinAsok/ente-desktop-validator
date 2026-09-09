@@ -455,7 +455,7 @@ test("standalone workflow keeps all scenarios and always restores networking", a
   assert.equal(yaml.jobs.validate.strategy["fail-fast"], false);
   assert.ok(
     yaml.jobs.validate.steps.some(
-      (s) => s.if === "always()" && s.run?.includes("network-restore"),
+      (s) => s.if?.includes("always()") && s.run?.includes("network-restore"),
     ),
   );
   assert.equal(yaml.permissions.contents, "read");

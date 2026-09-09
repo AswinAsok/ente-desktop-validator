@@ -67,6 +67,7 @@ export function combinations(version) {
       distro,
       asset: `ente-${version}${suffix}`,
       runner,
+      ...(format === "rpm" || format === "pacman" ? { container: distro } : {}),
     });
   for (const arch of ["x64", "arm64"]) {
     const win = [arch === "x64" ? "windows-2025" : "windows-11-arm"];
@@ -97,12 +98,7 @@ export function combinations(version) {
       arch,
       "rpm",
       `-${arch === "x64" ? "x86_64" : "aarch64"}.rpm`,
-      [
-        "self-hosted",
-        "Linux",
-        arch === "x64" ? "X64" : "ARM64",
-        "ente-validator-fedora",
-      ],
+      linux,
       "fedora",
     );
     add(
@@ -110,12 +106,7 @@ export function combinations(version) {
       arch,
       "pacman",
       `-${arch === "x64" ? arch : "aarch64"}.pacman`,
-      [
-        "self-hosted",
-        "Linux",
-        arch === "x64" ? "X64" : "ARM64",
-        "ente-validator-arch",
-      ],
+      linux,
       arch === "x64" ? "arch" : "archarm",
     );
   }

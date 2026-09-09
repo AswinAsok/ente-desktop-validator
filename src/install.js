@@ -67,7 +67,30 @@ export async function preflight(scenario, work, disposable) {
         `Existing Ente installation/profile at ${location}; reset the machine first`,
       );
   }
+  let execution = { kind: "native-machine" };
+  if (scenario.container) {
+    if (
+      process.env.ENTE_VALIDATOR_CONTAINER !== "1" ||
+      !(await exists("/.dockerenv"))
+    )
+      throw blocked(
+        "This scenario requires the disposable hosted container; use scripts/run-container.sh",
+      );
+    const resolver = await fs.readFile("/etc/resolv.conf", "utf8");
+    if (/nameserver\s+(?:127\.|::1)/.test(resolver))
+      throw blocked(
+        "A loopback DNS proxy could bypass container offline isolation",
+      );
+    execution = {
+      kind: "container",
+      userspace: scenario.container,
+      hostKernel: os.release(),
+      scope:
+        "Distribution userspace on a GitHub-hosted Ubuntu kernel; not a full distribution VM",
+    };
+  }
   return {
+    execution,
     platform: process.platform,
     arch: process.arch,
     release: os.release(),

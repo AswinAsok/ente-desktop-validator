@@ -161,6 +161,31 @@ export async function runScenario(
       if (unavailable) throw blocked(unavailable);
       return preflight(scenario, work, disposable);
     });
+    if (scenario.container) {
+      await requireCheck("container-isolation", async () => {
+        // Exercise the same kernel egress rules using external native processes,
+        // even when the candidate subsequently fails its installed-file checks.
+        const sandbox = await command("unshare", [
+          "--user",
+          "--map-root-user",
+          "--pid",
+          "--fork",
+          "true",
+        ]);
+        const probe = new NetworkPolicy(
+          path.join(artifacts, "container-network"),
+        );
+        try {
+          await probe.apply("online");
+          const online = await probe.verify("online");
+          await probe.apply("offline");
+          const offline = await probe.verify("offline");
+          return { sandboxNamespaces: sandbox.code === 0, online, offline };
+        } finally {
+          await probe.restore();
+        }
+      });
+    }
     await requireCheck("release-inventory", () => inventory(plan.release));
     const profile = await requireCheck("compatibility", () =>
       Promise.resolve(plan.profile),
@@ -382,7 +407,8 @@ export function assertPlan(plan) {
     JSON.stringify(profileIdentity(plan.profile)) !==
       JSON.stringify(plan.compatibilityProfile) ||
     plan.releaseFingerprint !== fingerprint(plan.release) ||
-    plan.expectedScenarios !== matrix(plan.release).length
+    plan.expectedScenarios !== matrix(plan.release).length ||
+    JSON.stringify(plan.scenarios) !== JSON.stringify(matrix(plan.release))
   )
     throw new Error(
       "Saved plan compatibility or release identity is invalid; regenerate the plan",

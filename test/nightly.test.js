@@ -93,12 +93,12 @@ test("nightly inputs select a repository independently of application version", 
   ])
     assert.throws(() => releaseDescriptor(bad));
 });
-test("nightly explicitly requires 12 packages and 28 scenarios including 8 dedicated-runner cases", () => {
+test("nightly explicitly requires 12 packages and 28 scenarios including 8 hosted-container cases", () => {
   const r = release(),
     m = matrix(r);
   assert.equal(m.length, 28);
   assert.equal(inventory(r).packages, 12);
-  assert.equal(m.filter((s) => s.runner.includes("self-hosted")).length, 8);
+  assert.equal(m.filter((s) => s.container).length, 8);
   assert.equal(m.filter((s) => s.platform === "darwin").length, 4);
   assert.equal(
     m.some((s) => s.format === "zip"),

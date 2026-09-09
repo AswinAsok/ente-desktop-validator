@@ -16,6 +16,7 @@ export function overall(checks) {
 export function requiredChecks(scenario) {
   return [
     "environment",
+    ...(scenario.container ? ["container-isolation"] : []),
     "release-inventory",
     "compatibility",
     "download",
@@ -89,7 +90,7 @@ export function markdown(report) {
     report.kind === "aggregate"
       ? report.scenarios.map((r) => [r.id, r.status, r.error ?? ""])
       : report.checks.map((c) => [c.id, c.status, c.error ?? ""]);
-  return `# Ente desktop validation: ${cell(report.status)}\n\nRelease: ${cell(report.release?.repository)} ${cell(report.release?.tag)}\n\n${report.baseline ? `Baseline: ${cell(report.baseline.repository)} ${cell(report.baseline.tag)}${report.baseline.archive ? ` (archive: ${cell(report.baseline.archive.tag)})` : ""}\n\n` : ""}${cause ? `First issue: ${cell(cause.id)} — ${cell(cause.error)}\n\n` : ""}${report.kind === "aggregate" ? "Full coverage requires every planned scenario to pass." : report.kind === "preparation" ? "Preparation stopped before native validation began." : "A single scenario is not a full release approval."}\n\n| Check | Result | Detail |\n|---|---|---|\n${rows.map((row) => `| ${row.map(cell).join(" | ")} |`).join("\n")}\n`;
+  return `# Ente desktop validation: ${cell(report.status)}\n\nRelease: ${cell(report.release?.repository)} ${cell(report.release?.tag)}\n\n${report.baseline ? `Baseline: ${cell(report.baseline.repository)} ${cell(report.baseline.tag)}${report.baseline.archive ? ` (archive: ${cell(report.baseline.archive.tag)})` : ""}\n\n` : ""}${report.scenario?.container || report.coverageScope?.containers ? "Coverage: Fedora/Arch scenarios use native-architecture containers on Ubuntu kernels, not full distribution VMs.\n\n" : ""}${cause ? `First issue: ${cell(cause.id)} — ${cell(cause.error)}\n\n` : ""}${report.kind === "aggregate" ? "Full coverage requires every planned scenario to pass." : report.kind === "preparation" ? "Preparation stopped before native validation began." : "A single scenario is not a full release approval."}\n\n| Check | Result | Detail |\n|---|---|---|\n${rows.map((row) => `| ${row.map(cell).join(" | ")} |`).join("\n")}\n`;
 }
 export async function saveReport(report, directory) {
   if (report.kind === "scenario") {
@@ -189,6 +190,12 @@ export function aggregate(plan, reports) {
     baseline: plan.baseline ? identity(plan.baseline) : null,
     compatibilityProfile: plan.compatibilityProfile,
     expectedScenarios: expectedMatrix.length,
+    coverageScope: {
+      nativeMachines: expectedMatrix.filter((s) => !s.container).length,
+      containers: expectedMatrix.filter((s) => s.container).length,
+      description:
+        "Container scenarios validate distribution userspace on Ubuntu host kernels; full distribution VM coverage is not claimed",
+    },
     fullCoverage: completePlan && scenarios.every((s) => s.status === "passed"),
     scenarios,
     status: completePlan ? overall(scenarios) : "blocked",

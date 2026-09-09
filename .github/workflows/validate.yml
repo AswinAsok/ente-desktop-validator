@@ -43,7 +43,6 @@ jobs:
           SCENARIOS: ${{ inputs.scenarios }}
           GH_TOKEN: ${{ secrets.ENTE_RELEASE_READ_TOKEN || github.token }}
           BASELINE_READ_TOKEN: ${{ github.token }}
-          RUNNER_ADMIN_TOKEN: ${{ secrets.RUNNER_DISCOVERY_TOKEN }}
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
@@ -63,7 +62,7 @@ jobs:
       GH_TOKEN: ${{ secrets.ENTE_RELEASE_READ_TOKEN || github.token }}
       BASELINE_READ_TOKEN: ${{ github.token }}
       SCENARIO: ${{ matrix.id }}
-      UNAVAILABLE: ${{ matrix.unavailable }}
+      CONTAINER_DISTRO: ${{ matrix.container }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -76,23 +75,30 @@ jobs:
           path: reports/plan
       - run: npm ci --ignore-scripts
       - name: Prepare hosted Ubuntu desktop dependencies
-        if: runner.os == 'Linux' && runner.environment == 'github-hosted' && matrix.unavailable == ''
+        if: runner.os == 'Linux' && runner.environment == 'github-hosted' && matrix.container == ''
         run: sudo apt-get update && sudo apt-get install -y xvfb imagemagick nftables libfuse2t64 libnss3 libatk-bridge2.0-0 libgtk-3-0 libasound2t64 libgbm1
+      - name: Validate Fedora or Arch in a disposable container
+        if: matrix.container != ''
+        shell: bash
+        run: bash scripts/run-container.sh
       - name: Validate one disposable scenario
+        if: matrix.container == ''
         shell: bash
         run: |
           args=(node src/cli.js run --plan reports/plan/plan.json --scenario "$SCENARIO" --out "reports/scenarios/$SCENARIO" --disposable)
-          if [[ -n "$UNAVAILABLE" ]]; then
-            "${args[@]}" --unavailable "$UNAVAILABLE"
-          elif [[ "$RUNNER_OS" == Linux ]]; then
+          if [[ "$RUNNER_OS" == Linux ]]; then
             xvfb-run -a "${args[@]}"
           else
             "${args[@]}"
           fi
       - name: Restore OS firewall after failure or cancellation
-        if: always()
+        if: always() && matrix.container == ''
         shell: bash
         run: node src/cli.js network-restore --out "reports/scenarios/$SCENARIO"
+      - name: Destroy scenario container after failure or cancellation
+        if: always() && matrix.container != ''
+        shell: bash
+        run: docker rm -f "ente-validator-$SCENARIO" || true
       - name: Preserve check results in the job summary
         if: always()
         shell: bash
