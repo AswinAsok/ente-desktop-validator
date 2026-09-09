@@ -1,15 +1,28 @@
 #!/usr/bin/env bash
 set -euo pipefail
 source /etc/os-release
+retry() {
+  for attempt in 1 2 3; do
+    "$@" && return 0
+    if [[ "$attempt" == 3 ]]; then return 1; fi
+    sleep "$((attempt * 5))"
+  done
+}
 if [[ "$ID" == fedora ]]; then
   dnf install -y sudo git curl tar gzip procps-ng util-linux shadow-utils \
     xorg-x11-server-Xvfb xorg-x11-xauth ImageMagick nftables nss atk \
     at-spi2-atk gtk3 alsa-lib mesa-libgbm dbus-x11
 else
   pacman-key --init
-  if [[ "$ID" == archarm ]]; then pacman-key --populate archlinuxarm; else pacman-key --populate archlinux; fi
-  pacman -Syu --noconfirm --disable-sandbox
-  pacman -S --needed --noconfirm --disable-sandbox sudo git curl tar gzip procps-ng util-linux shadow \
+  if [[ "$ID" == archarm ]]; then
+    pacman-key --populate archlinuxarm
+    # Keep the default mirrors and add the HTTPS mirror used for the rootfs.
+    printf '\nServer = https://de3.mirror.archlinuxarm.org/$arch/$repo\n' >> /etc/pacman.d/mirrorlist
+  else
+    pacman-key --populate archlinux
+  fi
+  retry pacman -Syu --noconfirm --disable-sandbox
+  retry pacman -S --needed --noconfirm --disable-sandbox sudo git curl tar gzip procps-ng util-linux shadow \
     xorg-server-xvfb xorg-xauth imagemagick nftables nss at-spi2-core gtk3 alsa-lib mesa dbus
 fi
 # Minimal Fedora images can omit shadow accounts; create them before adding the test user.

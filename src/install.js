@@ -217,27 +217,38 @@ export async function install(
   };
 }
 
-export async function stopApp(app) {
+export async function stopApp(app, processGroup) {
   if (process.platform === "win32") {
     await powershell(
       `Get-Process | Where-Object { $_.ProcessName -eq 'ente' -and $_.Path -ieq ${psQuote(app.executable)} } | ForEach-Object { taskkill.exe /PID $_.Id /T /F | Out-Null }`,
     );
   } else {
-    // Matches only the executable installed by this disposable scenario.
-    const processes = await command("ps", ["-axo", "pid=,command="]);
-    for (const line of processes.stdout.split("\n")) {
-      const m = /^\s*(\d+)\s+(.+)$/.exec(line);
-      if (
-        m &&
-        (m[2] === app.executable ||
-          m[2].startsWith(`${app.executable} `) ||
-          m[2] === app.launchExecutable)
-      ) {
-        try {
-          process.kill(Number(m[1]), "SIGTERM");
-        } catch {}
+    // AppImages launch in a second mount, so normal launches must be stopped
+    // by their dedicated process group, including children retaining DB locks.
+    for (let attempt = 0; attempt < 50; attempt++) {
+      const processes = await command("ps", ["-axo", "pid=,pgid=,stat=,command="]);
+      const pids = processes.stdout.split("\n").flatMap((line) => {
+        const m = /^\s*(\d+)\s+(\d+)\s+(\S+)\s+(.+)$/.exec(line);
+        if (!m || m[3].startsWith("Z")) return [];
+        const matches = processGroup !== undefined
+          ? Number(m[2]) === processGroup
+          : m[4] === app.executable ||
+            m[4].startsWith(`${app.executable} `) ||
+            m[4] === app.launchExecutable;
+        return matches ? [Number(m[1])] : [];
+      });
+      if (!pids.length) return;
+      if (attempt === 0 || attempt >= 30) {
+        for (const pid of pids) {
+          try {
+            process.kill(pid, attempt === 0 ? "SIGTERM" : "SIGKILL");
+          } catch (error) {
+            if (error.code !== "ESRCH") throw error;
+          }
+        }
       }
+      await sleep(100);
     }
+    throw new Error("Application processes did not exit before the next launch");
   }
-  await sleep(700);
 }

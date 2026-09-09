@@ -155,22 +155,14 @@ export async function normalLaunch(app, directory) {
       exitCode: child.exitCode,
       signal: child.signalCode,
     });
-    if (child.pid) {
-      if (process.platform === "win32")
-        await command("taskkill", [
-          "/PID",
-          String(child.pid),
-          "/T",
-          "/F",
-        ]).catch(() => {});
-      else {
-        try {
-          process.kill(-child.pid, "SIGTERM");
-        } catch {}
-      }
-    }
-    await stopApp(app);
-    child.kill();
+    if (child.pid && process.platform === "win32")
+      await command("taskkill", [
+        "/PID",
+        String(child.pid),
+        "/T",
+        "/F",
+      ]).catch(() => {});
+    await stopApp(app, child.pid);
   }
 }
 

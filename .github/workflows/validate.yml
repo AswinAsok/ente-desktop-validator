@@ -77,6 +77,14 @@ jobs:
       - name: Prepare hosted Ubuntu desktop dependencies
         if: runner.os == 'Linux' && runner.environment == 'github-hosted' && matrix.container == ''
         run: sudo apt-get update && sudo apt-get install -y xvfb imagemagick nftables libfuse2t64 libnss3 libatk-bridge2.0-0 libgtk-3-0 libasound2t64 libgbm1
+      - name: Enable Chromium namespace sandbox on disposable Ubuntu
+        if: runner.os == 'Linux' && runner.environment == 'github-hosted' && matrix.container == ''
+        shell: bash
+        run: |
+          mkdir -p "reports/scenarios/$SCENARIO/artifacts"
+          sysctl -n kernel.apparmor_restrict_unprivileged_userns > "reports/scenarios/$SCENARIO/artifacts/host-userns-policy.txt"
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          unshare --user --map-root-user true
       - name: Validate Fedora or Arch in a disposable container
         if: matrix.container != ''
         shell: bash
@@ -95,6 +103,14 @@ jobs:
         if: always() && matrix.container == ''
         shell: bash
         run: node src/cli.js network-restore --out "reports/scenarios/$SCENARIO"
+      - name: Restore Ubuntu namespace policy after failure or cancellation
+        if: always() && runner.os == 'Linux' && runner.environment == 'github-hosted' && matrix.container == ''
+        shell: bash
+        run: |
+          policy="reports/scenarios/$SCENARIO/artifacts/host-userns-policy.txt"
+          if [[ -s "$policy" ]]; then
+            sudo sysctl -w "kernel.apparmor_restrict_unprivileged_userns=$(cat "$policy")"
+          fi
       - name: Destroy scenario container after failure or cancellation
         if: always() && matrix.container != ''
         shell: bash
