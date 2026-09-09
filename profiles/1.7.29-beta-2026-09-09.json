@@ -1,0 +1,112 @@
+{
+  "schemaVersion": 1,
+  "version": "1.7.29-beta",
+  "source": {
+    "repository": "ente/ente",
+    "commit": "af9ac44f3bd6e1e33af385d0347661c648fd6337",
+    "paths": [
+      "desktop/electron-builder.yml",
+      "desktop/src/main/services/ml-worker.ts",
+      "desktop/src/main/services/ml-native.ts",
+      "rust/crates/ml/src/assets.rs",
+      "desktop/package-lock.json",
+      "desktop/scripts/ort.js",
+      "rust/bindings/napi/photos/src/lib.rs",
+      "rust/Cargo.lock",
+      ".github/workflows/photos-desktop-build.yml"
+    ]
+  },
+  "runtimeAdapter": "comlink-ml-v1",
+  "ffmpegArchitectures": {
+    "win32-arm64": ["x64"]
+  },
+  "modelHosts": ["models.ente.com"],
+  "models": [
+    {
+      "path": "assets/models/yolov5s_face_640_640_static_b1/yolov5s_face_640_640_static_b1.onnx",
+      "size": 32355091,
+      "sha256": "e047647409403d52696035ecd445792173e50d7fbdcccac97b958a585db9aa3d"
+    },
+    {
+      "path": "assets/models/mobilefacenet_portable_static_b1/mobilefacenet_portable_static_b1.onnx",
+      "size": 5278803,
+      "sha256": "0763fc33f54e138476194da95987e133b3e976075a6b1d3e1b2caedb251b1a36"
+    },
+    {
+      "path": "assets/models/mobileclip_s2_image_gelu_opset20/mobileclip_s2_image_gelu_opset20.onnx",
+      "size": 143057352,
+      "sha256": "205a430af825e501c5138e5bb9abea942482a7a4fd4a680e98e47cf0830dce7e"
+    },
+    {
+      "path": "assets/models/mobileclip_s2_text_opset18_quant/mobileclip_s2_text_opset18_quant.onnx",
+      "size": 67144712,
+      "sha256": "d92f33dfcff83077fc2e0d3414250710efbb51795dfd89767bdbefb5fdc47322"
+    },
+    {
+      "path": "assets/models/mobileclip_s2_text_opset18_quant/bpe_simple_vocab_16e6.txt",
+      "size": 3194984,
+      "sha256": "67603cfda2e032ad77b5f8808af37789d590db664b26df8705d2bf8b3c553fc8"
+    },
+    {
+      "path": "assets/models/yolov5s_pet_face_fp16_V2/yolov5s_pet_face_fp16_V2.onnx",
+      "size": 14758020,
+      "sha256": "7876d97992eeb5f3a9f3b35eff5e0e133012928172a8b005093108d8c3ad2d1c"
+    },
+    {
+      "path": "assets/models/dog_face_embedding128/dog_face_embedding128.onnx",
+      "size": 4141071,
+      "sha256": "fb04d781eb1f7adf6ce3432dc0c5873f16cc051b5c98c14c754afb39e2b92462"
+    },
+    {
+      "path": "assets/models/cat_face_embedding128/cat_face_embedding128.onnx",
+      "size": 4141071,
+      "sha256": "32b10694a27f6404d2beaddbd64f07ad555f72dccb12ee60a7afe5dcf6aad6cd"
+    },
+    {
+      "path": "assets/models/yolov5s_object_fp16/yolov5s_object_fp16.onnx",
+      "size": 14987107,
+      "sha256": "113f0c18632eb2c4f6deebcd40eb01c676492e9b43923c2d336e1b4012fce9ef"
+    },
+    {
+      "path": "assets/models/dog_body_embedding192/dog_body_embedding192.onnx",
+      "size": 4569361,
+      "sha256": "1d85aa20358137e30f11c2d0baa9a2248b9997928d501fe15365d1fc57522770"
+    },
+    {
+      "path": "assets/models/cat_body_embedding192/cat_body_embedding192.onnx",
+      "size": 4569361,
+      "sha256": "62fb5891e61be69a96510d8ec56e7525a9541b0283e54574d27c86c9b4a26ddf"
+    }
+  ],
+  "fixtures": [
+    {
+      "name": "astronaut.png",
+      "url": "https://raw.githubusercontent.com/ente/test-fixtures/13c7cf83717140be20b32e6fbb178d5f15ea09ea/ml/indexing/v1/files/astronaut.png",
+      "size": 424520,
+      "sha256": "2418889d0d83962d51facc3832b55cf1849690018a1e873d1c551146555cd02f",
+      "expectFaces": true,
+      "expectPets": false
+    },
+    {
+      "name": "dog.jpg",
+      "url": "https://raw.githubusercontent.com/pytorch/hub/c7895df70c7767403e36f82786d6b611b7984557/images/dog.jpg",
+      "size": 661378,
+      "sha256": "f3f87bb8ab3c26c7ecfd3ac60421d7f32b0503d1d6c5baf8bac42ed93d86351a",
+      "expectFaces": false,
+      "expectPets": true
+    }
+  ],
+  "asarFiles": [
+    "package.json",
+    "app/main.js",
+    "app/preload.js",
+    "app/main/services/ml-worker.js",
+    "app/main/services/ml-native.js",
+    "app/main/services/ffmpeg-worker.js",
+    "out/index.html"
+  ],
+  "ortVersion": "1.28.1",
+  "windowsPublisher": "ENTE TECHNOLOGIES, INC.",
+  "channel": "nightly",
+  "contractSha256": "7c08001aec563066175aad3c00099f9502d838870ceb4e9da89a2df892a78a02"
+}

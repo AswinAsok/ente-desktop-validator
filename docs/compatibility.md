@@ -62,3 +62,28 @@ The upgrade fixture uses `hideDockIcon: false`, a native user preference present
 `baselines/nightly.json` pins all 12 installers from source `2ffa837dab0540fd46c8863714ef944498e3b1d5`. They are stored unchanged in the standalone repository’s dated baseline release. Downloads still verify the original Ente SHA-256 and size. Preparation and finalization verify the archive IDs and hashes; moving the original upstream nightly tag is expected and does not invalidate this frozen baseline. A deleted or changed archive blocks the run. Explicit baseline inputs continue to resolve the requested live release.
 
 The identical build can be selected as both candidate and baseline to test reinstallation and profile preservation. A later build under the same rolling tag/version can also be tested against this snapshot; Linux DEB/RPM installations explicitly reinstall same-version candidates. Stable candidates retain their preceding-stable default. Historical validation reports continue to describe the baselines actually used in those runs.
+
+## September 9 nightly review
+
+`profiles/1.7.29-beta-2026-09-09.json` reviews source commit
+`af9ac44f3bd6e1e33af385d0347661c648fd6337`, with contract SHA-256
+`7c08001aec563066175aad3c00099f9502d838870ceb4e9da89a2df892a78a02`.
+The original September 8 profile remains available, and the default archived
+baseline still points to that September 8 build.
+
+The [source comparison](https://github.com/ente/ente/compare/2ffa837dab0540fd46c8863714ef944498e3b1d5...af9ac44f3bd6e1e33af385d0347661c648fd6337)
+contains 72 commits and 238 changed files. The conservative fingerprint changed
+because it covers web and Rust changes as well as desktop contracts. Review found:
+
+- The entire `desktop/` tree is identical (`e72d5cb79242c2ddcd50080a59cca556d1ff0fe5`), including package locks, Electron Builder configuration, resource staging, preload, workers and ORT download configuration. The desktop publishing workflow is also identical (`3269ff8597a2de8a33d8b262fcbc740024ac019a`).
+- The renderer ML service tree is identical (`5c2705581f43683429b131100bd291db45047fc5`). The NAPI implementation is identical (`87bdec5d29ecf8b04a1a16ad4785f2ae75968a59`), so the existing Comlink adapter and output contracts remain applicable.
+- The model catalog is identical (`faf35f4c7dd1ae1ac75b6e74f0eb53dc3b7c2038`). All 11 model sizes/hashes and fixture expectations remain unchanged. The asset downloader source is unchanged; its Cargo manifest now inherits workspace edition/lint settings.
+- Rust ML changes make OCR CPU-only, remove its unused accelerated execution mode, and adjust lint attributes and conditional mutability. The face, pet and CLIP processing contracts and their platform-default provider selection remain unchanged. OCR is outside the current inference coverage.
+- Rust workspace/lock changes include new Photos SQLite database modules, rusqlite 0.40.2/libsqlite3-sys 0.38.2, and Locker/workspace refactoring. The Photos NAPI library depends on `ente-ml` and `ente-assets`, not the `ente-photos` database crate; its dependency declarations otherwise remain unchanged. SQLite uses the bundled workspace feature. These changes do not introduce a new required desktop model or resource path.
+- Shared HTTP changes require successful responses before reading bodies; other web changes include authentication, gallery/album handling and unrelated app UI. These do not change the external ML bridge. Account migration remains outside this validator's coverage.
+
+This is a separate reviewed contract, not an exception to fingerprint checking.
+Unknown future digests still stop preparation. Source review permits testing the
+installed binaries; it does not grant a runtime pass. The full matrix must still
+check actual installation, resources, inference, model integrity, offline reuse
+and upgrade preservation, and report any failures without weakening expectations.
