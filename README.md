@@ -109,6 +109,8 @@ Always discard the VM after a scenario, including a failed or interrupted one. A
 
 `report.json` and `summary.md` are written for each scenario. `artifacts/` contains installer and application logs, screenshots, inference outputs, and the installed-file inventory. `network/probes-*.json` records native firewall connectivity probes. `progress.json` records completed checks if the process is interrupted.
 
+GitHub summaries lead with the outcome and counts, then explain related failures together with affected platforms and next steps. Baseline failures and incomplete final identity checks are called out separately. Passing coverage is described in prose; technical diagnostics and downstream blocked checks are expandable instead of repeated in long tables. JSON retains the original results and errors, with an optional `issues` list on aggregate scenario entries for the originating checks. Existing job summaries keep their original presentation; future runs use the new layout.
+
 | Status        | Meaning                                                                |
 | ------------- | ---------------------------------------------------------------------- |
 | `passed`      | All required checks for the stated scope completed successfully        |

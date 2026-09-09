@@ -100,6 +100,13 @@
           },
           "error": {
             "type": "string"
+          },
+          "issues": {
+            "description": "Independent originating checks for readable summaries; downstream blocked checks remain in the scenario report.",
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/check"
+            }
           }
         }
       }

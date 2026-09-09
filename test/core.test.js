@@ -17,7 +17,13 @@ import {
   baselineRelease,
   api,
 } from "../src/github.js";
-import { overall, aggregate, requiredChecks, check } from "../src/report.js";
+import {
+  overall,
+  aggregate,
+  requiredChecks,
+  check,
+  markdown,
+} from "../src/report.js";
 import {
   loadProfile,
   inspectInstalled,
@@ -214,6 +220,134 @@ test("unsupported, forged pass and stale provenance cannot pass aggregation", ()
   }
   assert.equal(overall([]), "blocked");
   assert.equal(overall([{ status: "invented" }]), "failed");
+});
+test("readable summaries group root failures without dropping independent checks or changing results", () => {
+  const p = plan(),
+    reports = p.scenarios.map((s) => passing(p, s));
+  for (const r of reports.filter(
+    (r) => r.scenario.platform === "linux" && r.scenario.arch === "arm64",
+  )) {
+    Object.assign(
+      r.checks.find((c) => c.id === "installed-files"),
+      {
+        status: "failed",
+        error: `${r.scenario.id}/ffmpeg: expected arm64, found x64`,
+      },
+    );
+    Object.assign(
+      r.checks.find((c) => c.id === "ml-online"),
+      {
+        status: "blocked",
+        prerequisite: "installed-files",
+        error: "Blocked by installed-files: wrong architecture",
+      },
+    );
+    r.status = "failed";
+  }
+  Object.assign(
+    reports[0].checks.find((c) => c.id === "release-unchanged"),
+    { status: "blocked", error: "fetch failed (ENOTFOUND)" },
+  );
+  reports[0].status = "blocked";
+  const r = aggregate(p, reports),
+    text = markdown(r);
+  assert.equal(r.status, "failed");
+  assert.equal(r.fullCoverage, false);
+  assert.match(text, /23 of 32 required scenarios/);
+  assert.match(text, /8 failed · 1 blocked · 0 unsupported/);
+  assert.equal(
+    text.split("### Bundled FFmpeg has the wrong architecture").length,
+    2,
+  );
+  assert.match(text, /8 affected scenarios/);
+  assert.match(text, /final GitHub identity check/);
+  assert.doesNotMatch(text, /\|---|Blocked by installed-files/);
+  const arm = r.scenarios.find((s) => s.id === "linux-arm64-deb-fresh");
+  assert.deepEqual(
+    arm.issues.map((c) => c.id),
+    ["installed-files"],
+  );
+  assert.match(arm.error, /ml-online: Blocked by/);
+  Object.assign(
+    reports[0].checks.find((c) => c.id === "install"),
+    { status: "failed", error: "missing exe" },
+  );
+  reports[0].status = "failed";
+  assert.deepEqual(
+    aggregate(p, reports).scenarios[0].issues.map((c) => c.id),
+    ["install", "release-unchanged"],
+  );
+});
+test("summaries preserve baseline attribution, final identity failures and unsupported preparation", () => {
+  const p = plan(),
+    reports = p.scenarios.map((s) => passing(p, s));
+  const r = reports.find((r) => r.scenario.mode === "upgrade");
+  Object.assign(
+    r.checks.find((c) => c.id === "baseline-launch"),
+    {
+      status: "failed",
+      error: "Internal error opening backing store for indexedDB.open.",
+    },
+  );
+  r.status = "failed";
+  assert.match(
+    markdown(aggregate(p, reports)),
+    /older baseline before the candidate was installed/,
+  );
+  const allPassed = aggregate(
+    p,
+    p.scenarios.map((s) => passing(p, s)),
+  );
+  allPassed.status = "failed";
+  allPassed.fullCoverage = false;
+  allPassed.releaseIdentityError = "Asset replaced <script>";
+  const text = markdown(allPassed);
+  assert.match(text, /Final release verification failed/);
+  assert.doesNotMatch(text, /release meets|<script>/);
+  assert.match(text, /Asset replaced &lt;script&gt;/);
+  const preparation = markdown({
+    kind: "preparation",
+    status: "unsupported",
+    checks: [
+      {
+        id: "preparation",
+        status: "unsupported",
+        error: "No reviewed contract at commit abc",
+      },
+    ],
+  });
+  assert.match(preparation, /No reviewed contract at commit abc/);
+  assert.match(preparation, /before native validation began/);
+  const staticReport = markdown({
+    kind: "static-inspection",
+    status: "passed",
+    checks: [{ id: "installed-files", status: "passed" }],
+  });
+  assert.match(
+    staticReport,
+    /does not prove installation, launch, or ML inference/,
+  );
+  const partial = markdown({
+    kind: "scenario",
+    scenario: { id: "darwin-arm64-dmg-upgrade" },
+    status: "failed",
+    checks: [
+      { id: "ml-online", status: "passed" },
+      { id: "model-integrity", status: "failed", error: "hash mismatch" },
+      {
+        id: "ml-offline",
+        status: "blocked",
+        prerequisite: "model-integrity",
+        error: "Blocked by model-integrity: hash mismatch",
+      },
+    ],
+  });
+  assert.match(partial, /macOS Apple Silicon DMG/);
+  assert.match(partial, /1 downstream checks were blocked/);
+  assert.doesNotMatch(
+    partial,
+    /every required model matched|Inference passed again/,
+  );
 });
 test("preceding stable uses numeric versions and excludes drafts/prereleases", async (t) => {
   t.mock.method(globalThis, "fetch", async () =>

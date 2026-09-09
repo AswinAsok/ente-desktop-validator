@@ -184,10 +184,7 @@ async function runCLI(argv) {
     }
     await saveReport(report, directory);
     if (process.env.GITHUB_STEP_SUMMARY)
-      await fs.appendFile(
-        process.env.GITHUB_STEP_SUMMARY,
-        `${markdown(report)}\n${report.releaseIdentityError ?? ""}\n`,
-      );
+      await fs.appendFile(process.env.GITHUB_STEP_SUMMARY, markdown(report));
     console.log(
       `${report.status}: ${report.scenarios.filter((s) => s.status === "passed").length}/${report.expectedScenarios} passed\n${directory}`,
     );
