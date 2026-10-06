@@ -4,7 +4,7 @@ An independent Node.js CLI and GitHub Actions project that tests **the installed
 
 The standalone project is available at [AswinAsok/ente-desktop-validator](https://github.com/AswinAsok/ente-desktop-validator). Native verification evidence and remaining coverage gaps are recorded in [docs/verification.md](docs/verification.md).
 
-Reviewed profiles cover stable **v1.7.28** and nightly **photos-desktop-v1.7.29-beta**, and release candidate **photos-desktop-v1.7.29-rc**. Nightly reuse requires matching source contracts; a version label alone never grants compatibility. Unsupported targets stop during preparation with an explanatory report, before native jobs start. v1.7.27 remains supported only as an upgrade baseline.
+Reviewed profiles cover stable **v1.7.28** and nightly **photos-desktop-v1.7.29-beta**, and release candidates **photos-desktop-v1.7.29-rc** and **photos-desktop-v1.7.30-rc**. Nightly reuse requires matching source contracts; a version label alone never grants compatibility. Unsupported targets stop during preparation with an explanatory report, before native jobs start. v1.7.27 remains supported only as an upgrade baseline.
 
 ## Quick start
 

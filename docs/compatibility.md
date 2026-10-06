@@ -121,3 +121,52 @@ three platform build jobs and the finish-build checkout/tag evidence. The RC
 contains all 12 expected packages. Its full tag, asset identities and source tag
 remain subject to final rechecks. The archived September 8 baseline is unchanged.
 Source review authorizes runtime testing; it does not grant a release pass.
+
+
+## Release candidate 1.7.30 review
+
+`profiles/1.7.30-rc.json` reviews source commit
+`e28d06e3ec6a66c35dd01744aa252ed2d65eeb1d` and contract SHA-256
+`618d63209d4a6063a80f67688ee4bddf8089cffbcee1561be985639d40c46f24`.
+The fingerprint was independently recomputed from the complete source Git tree,
+with only the existing documentation/version exclusions. Application version
+is `1.7.30`; publishing tag is `photos-desktop-v1.7.30-rc`.
+
+The [source comparison](https://github.com/ente/ente/compare/6785c987bd633deb53c1897ec3510c32937ecefd...e28d06e3ec6a66c35dd01744aa252ed2d65eeb1d)
+was reviewed for the installed-resource and external runtime contracts:
+
+- Electron Builder configuration, ORT staging, ML native loader, ML worker,
+  FFmpeg worker, desktop IPC types and NAPI dependency declarations are unchanged.
+  The utility-process bridge, `analyzeImage` and CLIP text methods, inference
+  result fields and dimensions still match `comlink-ml-v1`. All 11 model sizes
+  and SHA-256 pins were checked against the candidate model catalog and remain
+  unchanged. Model storage keys, download host and fixture expectations remain
+  applicable; asset downloader changes are lint annotations.
+- Desktop libvips staging advances from 8.16.0 to 8.18.7 at the same packaged
+  paths. Image conversion/thumbnail IPC now carries filename extensions; the
+  validator's ML fixture calls use the unchanged direct worker interface.
+  Desktop dependency changes are the app version and js-yaml 4.3.1 to 4.3.2;
+  Electron, Comlink, FFmpeg and ORT expectations are unchanged. The build workflow
+  updates action revisions while retaining the publication jobs, checkout/tag
+  evidence and 12-package nightly matrix.
+- Rust indexing and ONNX session/provider state are refactored without changing
+  the external outputs. Added OCR GPU options are opt-in and are not supplied by
+  the indexing runtime; its platform-default/CPU policies and fallback remain
+  applicable. Face/pet/CLIP changes include lint refactors. Vector storage moves
+  to a separate crate; OCR, scanning and vector-search behavior are outside this
+  validator's inference coverage.
+- Rust image processing adds bounded PNG decoding and refactors ICC conversion.
+  The existing image-analysis entry point and decoded RGB/dimension contract
+  remain available. Actual fixture detection and finite embeddings must still
+  pass; source review cannot establish equivalent pixels or runtime correctness.
+- Renderer changes include authentication/session refactoring, ML database and
+  people UI behavior, image conversion and shared dependencies. The login view
+  retains the existing LoginForm and utility-process bridge. The harness still
+  checks the actual installed renderer and preload; account migrations and
+  application-level indexing persistence remain outside its coverage.
+
+This profile authorizes the existing 28 native scenarios, with unchanged model,
+architecture, signature, runtime, offline and upgrade checks. It does not weaken
+fingerprint matching or accept unknown future source contracts. The archived
+September 8 baseline is unchanged. A source review permits testing and does not
+assert that any installed candidate or baseline passes.
