@@ -170,3 +170,65 @@ architecture, signature, runtime, offline and upgrade checks. It does not weaken
 fingerprint matching or accept unknown future source contracts. The archived
 September 8 baseline is unchanged. A source review permits testing and does not
 assert that any installed candidate or baseline passes.
+
+## October 26 nightly 1.7.31-beta review
+
+`profiles/1.7.31-beta-2026-10-26.json` reviews source commit
+`1328bf613025b73fab67a0c949075c9144e63933` and contract SHA-256
+`0cfb1f82cd89af245ef352a5778e673ccb8cd9d3970ba2e124b12ab5b4eafc1b`.
+The fingerprint was independently recomputed from all 8,264 source Git tree
+entries using the existing documentation/version exclusions. The packaged
+application version is `1.7.31-beta`.
+
+The [source comparison](https://github.com/ente/ente/compare/e28d06e3ec6a66c35dd01744aa252ed2d65eeb1d...1328bf613025b73fab67a0c949075c9144e63933)
+was reviewed against the installed-resource and external runtime requirements:
+
+- FFmpeg moves from `app.asar.unpacked/node_modules/ffmpeg-static` to the
+  `ffmpeg` directory under application resources. The new `beforePack` hook
+  stages pinned FFmpeg 9.0.2 archives, including a universal macOS executable
+  and native Windows ARM64. `ffprobe` and the download stamp are excluded from
+  packages. The worker receives the packaged FFmpeg path from the main process.
+  The profile now declares `ffmpegDirectory: "ffmpeg"`; both file inspection
+  and the synthetic-frame execution check use that declaration. Older profiles
+  retain the original path and Windows ARM64 x64 helper expectation. The new
+  profile requires native ARM64 and never falls back to an observed old path.
+- libvips staging moves to `beforePack` with size/hash-verified 8.18.7-1
+  downloads. Its packaged paths remain `resources/vips[.exe]`; macOS still uses
+  `sips`. The NAPI staging, ONNX Runtime staging and native loader are unchanged:
+  ORT is still 1.28.1, and universal macOS still contains both native addon and
+  ORT architectures. Electron advances from 42.5.0 to 42.11.18, Zod advances to
+  4.6.6, and `ffmpeg-static` is removed. The Pacman dependency override changes
+  system package requirements, which remain exercised by native installation.
+- The preload bridge, ML worker, and NAPI exported implementation are unchanged.
+  `triggerCreateUtilityProcess("ml")`, `utilityProcessPort/ml`, `analyzeImage`
+  and `computeCLIPTextEmbeddingIfAvailable` retain the `comlink-ml-v1` contract.
+  Model storage keys and all 11 filenames, sizes and SHA-256 values were checked
+  against the candidate catalog and match. Face/pet/CLIP output dimensions and
+  execution-provider fields remain unchanged. The pinned positive fixtures and
+  all inference assertions are retained.
+- Rust updates NAPI dependencies and image/ML libraries, including imageproc
+  0.27, nalgebra 0.35, fast_image_resize 6.1, moxcms 0.9.1 and TIFF 0.11.3.
+  Face alignment explicitly preserves its previous border fill, and tokenizer
+  changes bound vocabulary parsing and use the updated regex API. Asset stores
+  share download coordination; added mobile model import helpers do not change
+  the desktop catalog. WebGPU canary coordination now accounts for overlapping
+  sessions and deferred first inference. The harness still checks actual
+  detections, finite embeddings, provider evidence, downloaded model hashes and
+  offline reuse; source review does not establish numerical equivalence.
+- Renderer changes include gallery/people UI, bounded decompression of remote
+  ML data, dependencies and authentication presentation. The fresh login page
+  retains login/signup controls, and desktop worker messaging remains unchanged.
+  The `hideDockIcon` native preference remains available for the upgrade fixture.
+  Account migration, remote ML synchronization, OCR and vector-search behavior
+  remain outside this validator's coverage.
+
+Publication evidence comes from successful upstream run
+[40255080771](https://github.com/ente/ente/actions/runs/40255080771): all three
+platform build jobs and `finish-build` succeeded, and the finish log records the
+exact source checkout and `photos-desktop-v1.7.31-beta` tag. All 12 candidate
+installers were published within that run. Workflow action updates and removal
+of the old manual macOS FFmpeg merge preserve the 28-scenario nightly matrix and
+the existing publication-evidence checks.
+
+This review permits the complete native test run. It does not grant a runtime
+pass, relax source fingerprints, or alter the archived September 8 baseline.
