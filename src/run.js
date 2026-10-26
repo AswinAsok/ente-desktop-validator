@@ -26,6 +26,7 @@ import {
   signatures,
   shortcuts,
   defaultProfileDirectory,
+  ffmpegPath,
 } from "./inspect.js";
 import { preflight, install, stopApp } from "./install.js";
 import { NetworkPolicy } from "./network.js";
@@ -72,12 +73,8 @@ export async function preparePlan(tag, baselineTag) {
   };
 }
 
-async function mediaTools(app) {
-  const ffmpeg = path.join(
-    app.resources,
-    "app.asar.unpacked/node_modules/ffmpeg-static",
-    process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg",
-  );
+async function mediaTools(app, profile) {
+  const ffmpeg = ffmpegPath(app.resources, process.platform, profile);
   await command(ffmpeg, [
     "-v",
     "error",
@@ -100,7 +97,10 @@ async function mediaTools(app) {
       ["--version"],
     );
   else await command("sips", ["--version"]);
-  return { ffmpeg: "executed synthetic-frame decode", imageTool: "available" };
+  return {
+    ffmpeg: "executed synthetic-frame decode",
+    imageTool: "available",
+  };
 }
 async function cachePackageDependencies(scenario, files) {
   // Fetch OS dependencies before isolating the machine; the installers themselves
@@ -180,7 +180,11 @@ export async function runScenario(
           const online = await probe.verify("online");
           await probe.apply("offline");
           const offline = await probe.verify("offline");
-          return { sandboxNamespaces: sandbox.code === 0, online, offline };
+          return {
+            sandboxNamespaces: sandbox.code === 0,
+            online,
+            offline,
+          };
         } finally {
           await probe.restore();
         }
@@ -234,7 +238,9 @@ export async function runScenario(
           path.join(artifacts, "baseline"),
         ),
       );
-      await fs.mkdir(path.join(artifacts, "baseline"), { recursive: true });
+      await fs.mkdir(path.join(artifacts, "baseline"), {
+        recursive: true,
+      });
       await requireCheck("baseline-launch", async () => {
         await normalLaunch(app, path.join(artifacts, "baseline"));
         const baselineSession = await instrument(
@@ -319,7 +325,7 @@ export async function runScenario(
       session.assertAlive();
       return session.state;
     });
-    await requireCheck("media-tools", () => mediaTools(app));
+    await requireCheck("media-tools", () => mediaTools(app, plan.profile));
     if (scenario.mode === "upgrade")
       await requireCheck("profile-preserved", async () => {
         return verifyUpgradeProfile(profileDirectory, marker);

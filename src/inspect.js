@@ -43,6 +43,15 @@ export function layout(root, platform) {
     asar: path.join(resources, "app.asar"),
   };
 }
+export function ffmpegPath(resources, platform, profile) {
+  return inside(
+    resources,
+    path.join(
+      profile.ffmpegDirectory ?? "app.asar.unpacked/node_modules/ffmpeg-static",
+      platform === "win32" ? "ffmpeg.exe" : "ffmpeg",
+    ),
+  );
+}
 export function defaultProfileDirectory() {
   return path.join(
     process.platform === "darwin"
@@ -56,7 +65,9 @@ export function defaultProfileDirectory() {
 export async function fileInventory(root) {
   const files = [];
   async function visit(directory) {
-    for (const entry of await fs.readdir(directory, { withFileTypes: true })) {
+    for (const entry of await fs.readdir(directory, {
+      withFileTypes: true,
+    })) {
       const file = path.join(directory, entry.name);
       const relative = path.relative(root, file).split(path.sep).join("/");
       if (entry.isSymbolicLink())
@@ -201,11 +212,7 @@ export async function inspectInstalled(root, scenario, profile, version) {
     ]);
   }
   await required(
-    path.join(
-      app.resources,
-      "app.asar.unpacked/node_modules/ffmpeg-static",
-      scenario.platform === "win32" ? "ffmpeg.exe" : "ffmpeg",
-    ),
+    ffmpegPath(app.resources, scenario.platform, profile),
     profile.ffmpegArchitectures?.[`${scenario.platform}-${scenario.arch}`] ??
       arches,
   );

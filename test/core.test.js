@@ -389,12 +389,16 @@ test("downloads reject HTTP failure, size/hash corruption, and clear partial fil
     async () => new Response("forbidden", { status: 403 }),
   );
   await assert.rejects(
-    download("https://models.ente.com/model", file, { sha256: sha("good") }),
+    download("https://models.ente.com/model", file, {
+      sha256: sha("good"),
+    }),
     /HTTP 403/,
   );
   mock.mock.mockImplementation(async () => new Response("bad"));
   await assert.rejects(
-    download("https://models.ente.com/model", file, { sha256: sha("good") }),
+    download("https://models.ente.com/model", file, {
+      sha256: sha("good"),
+    }),
     /integrity/,
   );
   await assert.rejects(fs.stat(`${file}.partial`), /ENOENT/);
@@ -435,67 +439,103 @@ test("PE and ELF architecture checks reject malformed and mismatched binaries", 
   pe.writeUInt32LE(65500, 0x3c);
   assert.throws(() => binaryArchitectures(pe));
 });
-test("installer exit success cannot hide a missing executable or native resource", async (t) => {
-  const dir = await temporary(t),
-    source = path.join(dir, "source"),
-    root = path.join(dir, "installed");
-  const profile = await loadProfile("v1.7.28"),
-    scenario = combinations("v1.7.28").find(
-      (s) => s.key === "win32-arm64-nsis",
+for (const [profileFile, tag] of [
+  ["1.7.28.json", "v1.7.28"],
+  ["1.7.31-beta-2026-10-26.json", "photos-desktop-v1.7.31-beta"],
+])
+  test(`${tag}: installed resources require the reviewed paths and architectures`, async (t) => {
+    const dir = await temporary(t),
+      source = path.join(dir, "source"),
+      root = path.join(dir, "installed");
+    const profile = JSON.parse(
+        await fs.readFile(
+          new URL(`../profiles/${profileFile}`, import.meta.url),
+          "utf8",
+        ),
+      ),
+      scenario = combinations(tag).find((s) => s.key === "win32-arm64-nsis");
+    const modernFFmpeg = tag === "photos-desktop-v1.7.31-beta";
+    const ffmpeg = modernFFmpeg
+      ? "resources/ffmpeg/ffmpeg.exe"
+      : "resources/app.asar.unpacked/node_modules/ffmpeg-static/ffmpeg.exe";
+    for (const file of [...profile.asarFiles, "out/_next/static/test.js"]) {
+      await fs.mkdir(path.dirname(path.join(source, file)), {
+        recursive: true,
+      });
+      await fs.writeFile(
+        path.join(source, file),
+        file === "package.json"
+          ? JSON.stringify({ name: "ente", version: profile.version })
+          : "synthetic fixture",
+      );
+    }
+    await fs.mkdir(path.join(root, "resources"), { recursive: true });
+    await createPackage(source, path.join(root, "resources/app.asar"));
+    const pe = Buffer.alloc(512);
+    pe.write("MZ");
+    pe.writeUInt32LE(128, 0x3c);
+    pe.write("PE\0\0", 128);
+    pe.writeUInt16LE(0xaa64, 132);
+    const files = [
+      "ente.exe",
+      "resources/napi/index.win32-arm64-msvc.node",
+      "resources/onnxruntime/arm64/onnxruntime.dll",
+      ffmpeg,
+      "resources/vips.exe",
+      "icudtl.dat",
+      "resources.pak",
+      "chrome_100_percent.pak",
+      "chrome_200_percent.pak",
+      "ffmpeg.dll",
+      "libEGL.dll",
+      "libGLESv2.dll",
+    ];
+    for (const file of files) {
+      await fs.mkdir(path.dirname(path.join(root, file)), {
+        recursive: true,
+      });
+      const binary = Buffer.from(pe);
+      if (file.endsWith("ffmpeg-static/ffmpeg.exe"))
+        binary.writeUInt16LE(0x8664, 132);
+      await fs.writeFile(path.join(root, file), binary);
+    }
+    await inspectInstalled(root, scenario, profile, tag);
+    if (modernFFmpeg) {
+      const wrongArch = Buffer.from(pe);
+      wrongArch.writeUInt16LE(0x8664, 132);
+      await fs.writeFile(path.join(root, ffmpeg), wrongArch);
+      await assert.rejects(
+        inspectInstalled(root, scenario, profile, tag),
+        /ffmpeg\.exe: expected arm64, found x64/,
+      );
+      const oldPath = path.join(
+        root,
+        "resources/app.asar.unpacked/node_modules/ffmpeg-static/ffmpeg.exe",
+      );
+      await fs.mkdir(path.dirname(oldPath), { recursive: true });
+      await fs.writeFile(oldPath, pe);
+      await fs.rm(path.join(root, ffmpeg));
+      await assert.rejects(
+        inspectInstalled(root, scenario, profile, tag),
+        /ffmpeg[/\\]ffmpeg\.exe/,
+      );
+      await fs.writeFile(path.join(root, ffmpeg), pe);
+    }
+    await fs.rm(path.join(root, "ente.exe"));
+    const report = { checks: [] };
+    await check(report, "install", async () => ({ exitCode: 0 }));
+    await check(report, "installed-files", () =>
+      inspectInstalled(root, scenario, profile, tag),
     );
-  for (const file of [...profile.asarFiles, "out/_next/static/test.js"]) {
-    await fs.mkdir(path.dirname(path.join(source, file)), { recursive: true });
-    await fs.writeFile(
-      path.join(source, file),
-      file === "package.json"
-        ? JSON.stringify({ name: "ente", version: "1.7.28" })
-        : "synthetic fixture",
+    assert.equal(overall(report.checks), "failed");
+    assert.match(report.checks[1].error, /ente\.exe/);
+    await fs.writeFile(path.join(root, "ente.exe"), pe);
+    await fs.rm(path.join(root, "resources/onnxruntime/arm64/onnxruntime.dll"));
+    await assert.rejects(
+      inspectInstalled(root, scenario, profile, tag),
+      /onnxruntime\.dll/,
     );
-  }
-  await fs.mkdir(path.join(root, "resources"), { recursive: true });
-  await createPackage(source, path.join(root, "resources/app.asar"));
-  const pe = Buffer.alloc(512);
-  pe.write("MZ");
-  pe.writeUInt32LE(128, 0x3c);
-  pe.write("PE\0\0", 128);
-  pe.writeUInt16LE(0xaa64, 132);
-  const files = [
-    "ente.exe",
-    "resources/napi/index.win32-arm64-msvc.node",
-    "resources/onnxruntime/arm64/onnxruntime.dll",
-    "resources/app.asar.unpacked/node_modules/ffmpeg-static/ffmpeg.exe",
-    "resources/vips.exe",
-    "icudtl.dat",
-    "resources.pak",
-    "chrome_100_percent.pak",
-    "chrome_200_percent.pak",
-    "ffmpeg.dll",
-    "libEGL.dll",
-    "libGLESv2.dll",
-  ];
-  for (const file of files) {
-    await fs.mkdir(path.dirname(path.join(root, file)), { recursive: true });
-    const binary = Buffer.from(pe);
-    if (file.endsWith("ffmpeg-static/ffmpeg.exe"))
-      binary.writeUInt16LE(0x8664, 132);
-    await fs.writeFile(path.join(root, file), binary);
-  }
-  await inspectInstalled(root, scenario, profile, "v1.7.28");
-  await fs.rm(path.join(root, "ente.exe"));
-  const report = { checks: [] };
-  await check(report, "install", async () => ({ exitCode: 0 }));
-  await check(report, "installed-files", () =>
-    inspectInstalled(root, scenario, profile, "v1.7.28"),
-  );
-  assert.equal(overall(report.checks), "failed");
-  assert.match(report.checks[1].error, /ente\.exe/);
-  await fs.writeFile(path.join(root, "ente.exe"), pe);
-  await fs.rm(path.join(root, "resources/onnxruntime/arm64/onnxruntime.dll"));
-  await assert.rejects(
-    inspectInstalled(root, scenario, profile, "v1.7.28"),
-    /onnxruntime\.dll/,
-  );
-});
+  });
 const embedding = (n) => Array(n).fill(1 / Math.sqrt(n));
 const inference = () => ({
   decodedImageSize: { width: 100, height: 100 },
@@ -550,7 +590,10 @@ test("ML worker crash/download failure propagates; unavailable bridge is unsuppo
     await assert.rejects(
       runML(
         session,
-        { runtimeAdapter: "comlink-ml-v1", fixtures: [{ name: "image" }] },
+        {
+          runtimeAdapter: "comlink-ml-v1",
+          fixtures: [{ name: "image" }],
+        },
         dir,
         dir,
       ),
